@@ -1,0 +1,114 @@
+# Modular7Segment
+
+`Modular7Segment` renders a daisy-chained, 3D-printed seven-segment display
+into a caller-owned FastLED `CRGB` array. It does not register a FastLED
+controller and does not call `FastLED.show()`, so a sketch can combine it with
+other LED effects and transmit all changes at once.
+
+## Layout
+
+Pass a layout string to describe the physical modules in data-chain order:
+
+- `D`: one seven-segment digit. It uses `7 * pixelsPerSegment` LEDs.
+- `.`: one decimal-point module. It uses `pixelsPerDot` LEDs.
+- `:`: one colon module. It uses `2 * pixelsPerDot` LEDs. The first dot in the
+  chain is the bottom dot and the second is the top dot.
+
+For example, `"DD:DD"` describes a four-digit clock. With three LEDs per
+segment and one LED per dot, it requires $4 * 7 * 3 + 2 * 1 = 86$ LEDs.
+
+The current one-digit hardware is `"D"` with three LEDs per segment, which
+requires $7 * 3 = 21$ LEDs.
+
+## Segment Wiring Order
+
+The LEDs of each `D` module are expected in this exact order:
+
+1. Bottom, wired right to left
+2. Lower-left, wired bottom to top
+3. Middle, wired left to right
+4. Upper-left, wired bottom to top
+5. Top, wired left to right
+6. Upper-right, wired top to bottom
+7. Lower-right, wired top to bottom
+
+Every segment occupies a contiguous `pixelsPerSegment` range. The class maps
+the standard characters `0` through `9`, `A` through `F` (upper or lower case),
+and space/off to these segment ranges. Unsupported characters render as off.
+
+## Setup
+
+Include the class in the sketch and keep FastLED registration in the sketch:
+
+```cpp
+#include <FastLED.h>
+#include <Modular7Segment.h>
+
+constexpr uint8_t DATA_PIN = 27;
+constexpr char LAYOUT[] = "D";
+constexpr uint8_t PIXELS_PER_SEGMENT = 3;
+constexpr uint8_t PIXELS_PER_DOT = 1;
+constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
+  LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
+static_assert(NUM_LEDS > 0, "Invalid display layout");
+
+CRGB leds[NUM_LEDS];
+Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
+
+void setup() {
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(25);
+
+  if (!display.isValid()) {
+    return;
+  }
+
+  display.setModule(0, '8', CRGB::Red);
+  FastLED.show();
+}
+```
+
+The constructor parameters are:
+
+```cpp
+template <size_t N>
+Modular7Segment(CRGB (&leds)[N], const char* layout,
+                uint8_t pixelsPerSegment, uint8_t pixelsPerDot);
+```
+
+The constructor infers the size of the caller's `CRGB` array, so no LED count
+is passed to the class. `requiredLeds(layout, pixelsPerSegment, pixelsPerDot)`
+is a compile-time helper for declaring that array and supplying the required
+count to `FastLED.addLeds`. `pixelsPerSegment` and `pixelsPerDot` are both
+configurable at construction. The instance is invalid when either density is
+zero, the layout is empty or contains another character, the layout has more
+than 32 modules, or the layout requires more LEDs than the array provides.
+Check `isValid()` before rendering.
+
+## Rendering
+
+`setModule(moduleIndex, character, color)` clears and redraws one physical
+module. Module indexes are zero-based and follow the layout string order.
+
+```cpp
+display.setModule(0, '1', CRGB::Blue);
+display.setModule(1, '2', CRGB::Blue);
+FastLED.show();
+```
+
+`printString(text, color)` maps text over the configured modules. Digit
+modules consume one character each. Colon and decimal modules consume their
+matching punctuation only when present; otherwise they remain off. Thus, both
+forms below are valid for a `"DD:DD"` layout:
+
+```cpp
+display.printString("12:34", CRGB::Green);
+display.printString("1234", CRGB::Green);
+FastLED.show();
+```
+
+`clear()` turns off only the LEDs used by the configured layout. It also does
+not transmit data, so follow it with `FastLED.show()`.
+
+Use `moduleCount()` to retrieve the number of physical modules and
+`requiredLeds()` to retrieve the LED count calculated from the layout.
