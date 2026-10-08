@@ -1,5 +1,6 @@
 .pio
 .venv/
+venv_pop/
 build.log
 AZ279_A_20-2_EN_B08BTRQNB3_5bbfc25f-6964-44b5-9ff2-dc872d3abc0b.pdf
 .vscode/.browse.c_cpp.db*

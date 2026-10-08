@@ -58,14 +58,19 @@ Modular7Segment::Modular7Segment(CRGB* leds, uint16_t numLeds,
     return;
   }
 
-  for (const char* module = layout; *module != '\0'; ++module) {
+  for (const char* module = layout; *module != '\0';
+       module += 1 + digitSpan(module + 1)) {
     ModuleType moduleType;
+    uint8_t fallbackCount;
     if (*module == 'D') {
       moduleType = DIGIT;
+      fallbackCount = pixelsPerSegment;
     } else if (*module == ':') {
       moduleType = COLON;
+      fallbackCount = pixelsPerDot;
     } else if (*module == '.') {
       moduleType = DECIMAL_POINT;
+      fallbackCount = pixelsPerDot;
     } else {
       valid_ = false;
       return;
@@ -76,9 +81,16 @@ Modular7Segment::Modular7Segment(CRGB* leds, uint16_t numLeds,
       return;
     }
 
+    const uint16_t pixelCount = modulePixelCount(module, fallbackCount);
+    if (pixelCount == 0) {
+      valid_ = false;
+      return;
+    }
+
     moduleOffsets_[moduleCount_] = requiredLeds_;
     moduleTypes_[moduleCount_] = moduleType;
-    requiredLeds_ += moduleSize(moduleType);
+    modulePixelCounts_[moduleCount_] = static_cast<uint8_t>(pixelCount);
+    requiredLeds_ += moduleSize(moduleCount_);
     ++moduleCount_;
   }
 
@@ -96,13 +108,14 @@ void Modular7Segment::setModule(uint8_t moduleIndex, char character,
 
   if (moduleTypes_[moduleIndex] == DIGIT) {
     const uint8_t mask = characterMask(character);
+    const uint8_t count = modulePixelCounts_[moduleIndex];
     for (uint8_t segment = 0; segment < SEGMENT_COUNT; ++segment) {
       if ((mask & segmentBit(static_cast<Segment>(segment))) == 0) {
         continue;
       }
 
-      const uint16_t segmentOffset = moduleOffset + segment * pixelsPerSegment_;
-      for (uint8_t pixel = 0; pixel < pixelsPerSegment_; ++pixel) {
+      const uint16_t segmentOffset = moduleOffset + segment * count;
+      for (uint8_t pixel = 0; pixel < count; ++pixel) {
         leds_[segmentOffset + pixel] = color;
       }
     }
@@ -115,7 +128,8 @@ void Modular7Segment::setModule(uint8_t moduleIndex, char character,
     return;
   }
 
-  const uint16_t count = moduleSize(moduleTypes_[moduleIndex]);
+  // moduleSize() takes a module index, not the ModuleType enum value.
+  const uint16_t count = moduleSize(moduleIndex);
   for (uint16_t pixel = 0; pixel < count; ++pixel) {
     leds_[moduleOffset + pixel] = color;
   }
@@ -189,22 +203,22 @@ uint8_t Modular7Segment::characterMask(char character) {
   }
 }
 
-uint16_t Modular7Segment::moduleSize(ModuleType moduleType) const {
+uint16_t Modular7Segment::moduleSize(uint8_t moduleIndex) const {
+  const ModuleType moduleType = moduleTypes_[moduleIndex];
   if (moduleType == DIGIT) {
-    return SEGMENT_COUNT * pixelsPerSegment_;
+    return SEGMENT_COUNT * modulePixelCounts_[moduleIndex];
   }
-  return (moduleType == COLON ? 2 : 1) * pixelsPerDot_;
+  return (moduleType == COLON ? 2 : 1) * modulePixelCounts_[moduleIndex];
 }
 
 bool Modular7Segment::moduleFitsBuffer(uint8_t moduleIndex) const {
   return moduleIndex < moduleCount_ &&
-         moduleOffsets_[moduleIndex] + moduleSize(moduleTypes_[moduleIndex]) <=
-             numLeds_;
+         moduleOffsets_[moduleIndex] + moduleSize(moduleIndex) <= numLeds_;
 }
 
 void Modular7Segment::clearModule(uint8_t moduleIndex) {
   const uint16_t moduleOffset = moduleOffsets_[moduleIndex];
-  const uint16_t count = moduleSize(moduleTypes_[moduleIndex]);
+  const uint16_t count = moduleSize(moduleIndex);
   for (uint16_t pixel = 0; pixel < count; ++pixel) {
     leds_[moduleOffset + pixel] = CRGB::Black;
   }
