@@ -4,13 +4,13 @@
 
 constexpr uint8_t DATA_PIN = 27;
 constexpr char LAYOUT[] = "D";
-constexpr uint8_t PIXELS_PER_SEGMENT = 3;
+constexpr uint8_t PIXELS_PER_SEGMENT = 4;
 constexpr uint8_t PIXELS_PER_DOT = 1;
 constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
   LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 static_assert(NUM_LEDS > 0, "Invalid display layout");
 constexpr uint32_t GLYPH_INTERVAL_MS = 1000;
-constexpr uint8_t BRIGHTNESS = 25;
+constexpr uint8_t BRIGHTNESS = 180;
 
 CRGB leds[NUM_LEDS];
 Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
