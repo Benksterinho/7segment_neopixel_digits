@@ -42,18 +42,15 @@ constexpr uint8_t E = TOP_MASK | UPPER_LEFT_MASK | MIDDLE_MASK |
 constexpr uint8_t F = TOP_MASK | UPPER_LEFT_MASK | MIDDLE_MASK | LOWER_LEFT_MASK;
 }  // namespace
 
-Modular7Segment::Modular7Segment(CRGB* leds, uint16_t numLeds,
-                                 const char* layout,
+Modular7Segment::Modular7Segment(Adafruit_NeoPixel& leds, const char* layout,
                                  uint8_t pixelsPerSegment,
                                  uint8_t pixelsPerDot)
     : leds_(leds),
-      numLeds_(numLeds),
       pixelsPerSegment_(pixelsPerSegment),
       pixelsPerDot_(pixelsPerDot),
       moduleCount_(0),
       requiredLeds_(0),
-      valid_(leds != nullptr && layout != nullptr && pixelsPerSegment > 0 &&
-             pixelsPerDot > 0) {
+      valid_(layout != nullptr && pixelsPerSegment > 0 && pixelsPerDot > 0) {
   if (!valid_) {
     return;
   }
@@ -94,11 +91,11 @@ Modular7Segment::Modular7Segment(CRGB* leds, uint16_t numLeds,
     ++moduleCount_;
   }
 
-  valid_ = moduleCount_ > 0 && requiredLeds_ <= numLeds_;
+  valid_ = moduleCount_ > 0 && requiredLeds_ <= leds_.numPixels();
 }
 
 void Modular7Segment::setModule(uint8_t moduleIndex, char character,
-                                CRGB color) {
+                                uint32_t color) {
   if (!valid_ || !moduleFitsBuffer(moduleIndex)) {
     return;
   }
@@ -116,7 +113,7 @@ void Modular7Segment::setModule(uint8_t moduleIndex, char character,
 
       const uint16_t segmentOffset = moduleOffset + segment * count;
       for (uint8_t pixel = 0; pixel < count; ++pixel) {
-        leds_[segmentOffset + pixel] = color;
+        leds_.setPixelColor(segmentOffset + pixel, color);
       }
     }
     return;
@@ -131,11 +128,11 @@ void Modular7Segment::setModule(uint8_t moduleIndex, char character,
   // moduleSize() takes a module index, not the ModuleType enum value.
   const uint16_t count = moduleSize(moduleIndex);
   for (uint16_t pixel = 0; pixel < count; ++pixel) {
-    leds_[moduleOffset + pixel] = color;
+    leds_.setPixelColor(moduleOffset + pixel, color);
   }
 }
 
-void Modular7Segment::printString(const char* text, CRGB color) {
+void Modular7Segment::printString(const char* text, uint32_t color) {
   if (!valid_) {
     return;
   }
@@ -165,7 +162,7 @@ void Modular7Segment::clear() {
   }
 
   for (uint16_t led = 0; led < requiredLeds_; ++led) {
-    leds_[led] = CRGB::Black;
+    leds_.setPixelColor(led, 0);
   }
 }
 
@@ -213,13 +210,14 @@ uint16_t Modular7Segment::moduleSize(uint8_t moduleIndex) const {
 
 bool Modular7Segment::moduleFitsBuffer(uint8_t moduleIndex) const {
   return moduleIndex < moduleCount_ &&
-         moduleOffsets_[moduleIndex] + moduleSize(moduleIndex) <= numLeds_;
+         moduleOffsets_[moduleIndex] + moduleSize(moduleIndex) <=
+             leds_.numPixels();
 }
 
 void Modular7Segment::clearModule(uint8_t moduleIndex) {
   const uint16_t moduleOffset = moduleOffsets_[moduleIndex];
   const uint16_t count = moduleSize(moduleIndex);
   for (uint16_t pixel = 0; pixel < count; ++pixel) {
-    leds_[moduleOffset + pixel] = CRGB::Black;
+    leds_.setPixelColor(moduleOffset + pixel, 0);
   }
 }

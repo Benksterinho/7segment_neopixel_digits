@@ -1,8 +1,8 @@
 # Modular7Segment
 
-A FastLED-based 7-segment display library for modular NeoPixel (WS2812B)
-digit chains. The caller owns the LED buffer; the library renders into it
-without registering a FastLED controller or calling `FastLED.show()`.
+An Adafruit NeoPixel-based 7-segment display library for modular WS2812B digit
+chains. The caller owns an `Adafruit_NeoPixel` strip; the library writes pixel
+colors into its buffer and leaves transmission to the caller.
 
 ## Layout string
 
@@ -47,17 +47,19 @@ constexpr char MIXED_LAYOUT[] = "D4D4:D2D2";
 constexpr uint16_t MIXED_LEDS = Modular7Segment::requiredLeds(MIXED_LAYOUT, 4, 1);
 // = 28 + 28 + 2 + 14 + 14 = 86
 
-CRGB leds[MIXED_LEDS];
+constexpr uint8_t DATA_PIN = 27;
+Adafruit_NeoPixel leds(MIXED_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+leds.begin();
 Modular7Segment display(leds, MIXED_LAYOUT, 4, 1);
 
 if (display.isValid()) {
-  display.printString("12:34", CRGB::Green);
-  FastLED.show();
+  display.printString("12:34", leds.Color(0, 255, 0));
+  leds.show();
 }
 ```
 
-`requiredLeds()` is a compile-time constant expression, so the LED array can
-be sized statically. Guard invalid layouts at build time:
+`requiredLeds()` is a compile-time constant expression, so the strip size can
+be selected statically. Guard invalid layouts at build time:
 
 ```cpp
 static_assert(NUM_LEDS > 0, "Invalid display layout");
@@ -65,10 +67,10 @@ static_assert(NUM_LEDS > 0, "Invalid display layout");
 
 ## API
 
-- `Modular7Segment(CRGB (&leds)[N], const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot)`
+- `Modular7Segment(Adafruit_NeoPixel& leds, const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot)`
 - `static constexpr uint16_t requiredLeds(const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot)`
-- `void setModule(uint8_t moduleIndex, char character, CRGB color)`
-- `void printString(const char* text, CRGB color)`
+- `void setModule(uint8_t moduleIndex, char character, uint32_t color)`
+- `void printString(const char* text, uint32_t color)`
 - `void clear()`
 - `uint8_t moduleCount() const`
 - `uint16_t requiredLeds() const`
@@ -90,6 +92,10 @@ point modules light up only for their matching punctuation character.
 
 ## Design constraints
 
-- No dynamic memory allocation; all tables are fixed-size (`MAX_MODULES = 32`).
-- No FastLED controller registration and no hidden `FastLED.show()` calls.
-- The LED buffer is owned by the caller.
+- Layout tables are fixed-size (`MAX_MODULES = 32`); the library does not
+  allocate memory.
+- The caller constructs and initializes the `Adafruit_NeoPixel` strip. That
+  library owns its pixel buffer.
+- Rendering methods update the strip buffer but never call `show()`.
+- Set brightness during strip initialization; Adafruit NeoPixel applies
+  brightness to stored pixel data.

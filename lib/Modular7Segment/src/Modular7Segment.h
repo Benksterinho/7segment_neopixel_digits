@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 class Modular7Segment {
  public:
@@ -21,14 +21,11 @@ class Modular7Segment {
     return requiredLeds(layout, pixelsPerSegment, pixelsPerDot, 0, 0);
   }
 
-  template <size_t N>
-  Modular7Segment(CRGB (&leds)[N], const char* layout,
-                  uint8_t pixelsPerSegment, uint8_t pixelsPerDot)
-      : Modular7Segment(leds, static_cast<uint16_t>(N), layout,
-                        pixelsPerSegment, pixelsPerDot) {}
+  Modular7Segment(Adafruit_NeoPixel& leds, const char* layout,
+                  uint8_t pixelsPerSegment, uint8_t pixelsPerDot);
 
-  void setModule(uint8_t moduleIndex, char character, CRGB color);
-  void printString(const char* text, CRGB color);
+  void setModule(uint8_t moduleIndex, char character, uint32_t color);
+  void printString(const char* text, uint32_t color);
   void clear();
 
   uint8_t moduleCount() const;
@@ -118,11 +115,7 @@ class Modular7Segment {
                                        : 0;
   }
 
-  Modular7Segment(CRGB* leds, uint16_t numLeds, const char* layout,
-                  uint8_t pixelsPerSegment, uint8_t pixelsPerDot);
-
-  CRGB* leds_;
-  uint16_t numLeds_;
+  Adafruit_NeoPixel& leds_;
   uint8_t pixelsPerSegment_;
   uint8_t pixelsPerDot_;
   uint16_t moduleOffsets_[MAX_MODULES];

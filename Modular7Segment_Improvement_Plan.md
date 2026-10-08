@@ -1,5 +1,10 @@
 # Modular7Segment Improvement Plan
 
+> Migration note: This plan predates the move from FastLED to Adafruit
+> NeoPixel. Its FastLED-specific examples and API references describe the
+> previous implementation; see `lib/Modular7Segment/README.md` for the current
+> interface.
+
 ## Objective
 
 Improve the `Modular7Segment` library without changing its core architecture or its current ownership model.

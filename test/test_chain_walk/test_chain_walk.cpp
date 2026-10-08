@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 // Chain-walk hardware validation: lights exactly one red LED at a time,
 // advancing 0 -> 48 and wrapping around. No display library, no Wi-Fi/OTA.
@@ -19,17 +19,17 @@ constexpr uint8_t DATA_PIN = 27;
 constexpr uint16_t NUM_LEDS = 49;
 constexpr uint32_t STEP_INTERVAL_MS = 300;
 
-CRGB leds[NUM_LEDS];
+Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 uint16_t current = 0;
 uint32_t lastStep = 0;
 
 void setup() {
   delay(500);
 
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(32);
-
-  FastLED.clear(true);
+  leds.begin();
+  leds.setBrightness(32);
+  leds.clear();
+  leds.show();
   delay(1000);
 }
 
@@ -40,9 +40,9 @@ void loop() {
   }
   lastStep = now;
 
-  FastLED.clear();
-  leds[current] = CRGB::Red;
-  FastLED.show();
+  leds.clear();
+  leds.setPixelColor(current, leds.Color(255, 0, 0));
+  leds.show();
 
   current = (current + 1) % NUM_LEDS;
 }

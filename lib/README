@@ -1,9 +1,8 @@
 # Modular7Segment
 
 `Modular7Segment` renders a daisy-chained, 3D-printed seven-segment display
-into a caller-owned FastLED `CRGB` array. It does not register a FastLED
-controller and does not call `FastLED.show()`, so a sketch can combine it with
-other LED effects and transmit all changes at once.
+through a caller-owned `Adafruit_NeoPixel` strip. It updates the strip buffer
+but does not call `show()`, so a sketch controls when changes are transmitted.
 
 ## Layout
 
@@ -38,10 +37,10 @@ and space/off to these segment ranges. Unsupported characters render as off.
 
 ## Setup
 
-Include the class in the sketch and keep FastLED registration in the sketch:
+Include the class in the sketch and initialize the NeoPixel strip in the sketch:
 
 ```cpp
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 #include <Modular7Segment.h>
 
 constexpr uint8_t DATA_PIN = 27;
@@ -52,37 +51,35 @@ constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
   LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 static_assert(NUM_LEDS > 0, "Invalid display layout");
 
-CRGB leds[NUM_LEDS];
+Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 
 void setup() {
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(25);
+  leds.begin();
+  leds.setBrightness(25);
 
   if (!display.isValid()) {
     return;
   }
 
-  display.setModule(0, '8', CRGB::Red);
-  FastLED.show();
+  display.setModule(0, '8', leds.Color(255, 0, 0));
+  leds.show();
 }
 ```
 
 The constructor parameters are:
 
 ```cpp
-template <size_t N>
-Modular7Segment(CRGB (&leds)[N], const char* layout,
+Modular7Segment(Adafruit_NeoPixel& leds, const char* layout,
                 uint8_t pixelsPerSegment, uint8_t pixelsPerDot);
 ```
 
-The constructor infers the size of the caller's `CRGB` array, so no LED count
-is passed to the class. `requiredLeds(layout, pixelsPerSegment, pixelsPerDot)`
-is a compile-time helper for declaring that array and supplying the required
-count to `FastLED.addLeds`. `pixelsPerSegment` and `pixelsPerDot` are both
+The constructor reads the pixel count from the supplied strip. Use
+`requiredLeds(layout, pixelsPerSegment, pixelsPerDot)` to determine the strip
+size at compile time. `pixelsPerSegment` and `pixelsPerDot` are both
 configurable at construction. The instance is invalid when either density is
 zero, the layout is empty or contains another character, the layout has more
-than 32 modules, or the layout requires more LEDs than the array provides.
+than 32 modules, or the layout requires more LEDs than the strip provides.
 Check `isValid()` before rendering.
 
 ## Rendering
@@ -91,9 +88,9 @@ Check `isValid()` before rendering.
 module. Module indexes are zero-based and follow the layout string order.
 
 ```cpp
-display.setModule(0, '1', CRGB::Blue);
-display.setModule(1, '2', CRGB::Blue);
-FastLED.show();
+display.setModule(0, '1', leds.Color(0, 0, 255));
+display.setModule(1, '2', leds.Color(0, 0, 255));
+leds.show();
 ```
 
 `printString(text, color)` maps text over the configured modules. Digit
@@ -102,13 +99,13 @@ matching punctuation only when present; otherwise they remain off. Thus, both
 forms below are valid for a `"DD:DD"` layout:
 
 ```cpp
-display.printString("12:34", CRGB::Green);
-display.printString("1234", CRGB::Green);
-FastLED.show();
+display.printString("12:34", leds.Color(0, 255, 0));
+display.printString("1234", leds.Color(0, 255, 0));
+leds.show();
 ```
 
 `clear()` turns off only the LEDs used by the configured layout. It also does
-not transmit data, so follow it with `FastLED.show()`.
+not transmit data, so follow it with `leds.show()`.
 
 Use `moduleCount()` to retrieve the number of physical modules and
 `requiredLeds()` to retrieve the LED count calculated from the layout.

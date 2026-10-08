@@ -27,18 +27,18 @@ this order — stop debugging software until every item is verified.
      ringing on longer wires.
 
 5. **Correct LED protocol**
-   - The code assumes **WS2812B**.
-   - `GRB` only controls channel order; a wrong color order gives wrong
-     colors, never all-white. Do not chase this for all-white output.
+   - The code assumes **WS2812B** with `NEO_GRB + NEO_KHZ800`.
+   - A wrong channel order gives wrong colors, never all-white. Do not chase
+     this for all-white output.
 
 6. **Power**
    - 49 LEDs showing full white can draw ~2.9 A (60 mA per LED). Use an
      adequate 5 V PSU.
    - Add a large capacitor (e.g. 1000 uF, 6.3 V+) across 5 V/GND near the
      first module.
-   - Power-up white before FastLED initialization can cause brownouts and
-     data instability — the firmware now clears the strip before Wi-Fi, but
-     the PSU must still handle the inrush.
+   - Power-up white before NeoPixel initialization can cause brownouts and
+     data instability — the firmware now calls `begin()`, clears, and
+     transmits black before Wi-Fi, but the PSU must still handle the inrush.
    - Do not power 49 LEDs from the ESP32's 5 V pin.
 
 ## Minimal tests

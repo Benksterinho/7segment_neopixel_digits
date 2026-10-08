@@ -1,5 +1,10 @@
 # Modular7Segment Improvement and ESPHome Integration Plan
 
+> Migration note: This plan predates the move from FastLED to Adafruit
+> NeoPixel. Its FastLED-specific examples and API references describe the
+> previous implementation; see `lib/Modular7Segment/README.md` for the current
+> interface.
+
 ## Objective
 
 Evolve `Modular7Segment` into a robust, reusable seven-segment rendering library that works well in normal Arduino projects and can be cleanly integrated into ESPHome and Home Assistant based systems.

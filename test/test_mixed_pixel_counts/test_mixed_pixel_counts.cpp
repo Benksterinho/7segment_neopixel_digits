@@ -1,11 +1,15 @@
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 #include <Modular7Segment.h>
 #include <unity.h>
 
-// Unity's TEST_ASSERT_EQUAL compares integers only; CRGB needs operator==.
-#define TEST_ASSERT_CRGB(expected, actual) \
-  TEST_ASSERT_TRUE_MESSAGE(((actual) == (expected)), "CRGB mismatch")
+constexpr uint8_t DATA_PIN = 27;
+constexpr uint32_t BLACK = 0x000000;
+constexpr uint32_t RED = 0xFF0000;
+constexpr uint32_t GREEN = 0x00FF00;
+constexpr uint32_t BLUE = 0x0000FF;
+
+#define TEST_ASSERT_PIXEL(expected, actual) TEST_ASSERT_EQUAL_HEX32(expected, actual)
 
 // ---------------------------------------------------------------------------
 // Compile-time requiredLeds() checks
@@ -60,8 +64,9 @@ static_assert(MIXED_LEDS == 35, "mixed layout size");
 constexpr uint16_t MIXED_MODULE1_OFFSET = 14;
 
 void testMixedDigitRendering() {
-  CRGB leds[MIXED_LEDS];
-  fill_solid(leds, MIXED_LEDS, CRGB::Black);
+  Adafruit_NeoPixel leds(MIXED_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+  leds.begin();
+  leds.clear();
 
   Modular7Segment display(leds, MIXED_LAYOUT, 2, 1);
   TEST_ASSERT_TRUE(display.isValid());
@@ -69,33 +74,33 @@ void testMixedDigitRendering() {
   TEST_ASSERT_EQUAL_UINT16(MIXED_LEDS, display.requiredLeds());
 
   // '8' lights every segment of the 3-pixel-per-segment digit.
-  display.setModule(1, '8', CRGB::Red);
+  display.setModule(1, '8', RED);
   for (uint16_t led = 0; led < MIXED_MODULE1_OFFSET; ++led) {
-    TEST_ASSERT_CRGB(CRGB::Black, leds[led]);
+    TEST_ASSERT_PIXEL(BLACK, leds.getPixelColor(led));
   }
   for (uint16_t led = MIXED_MODULE1_OFFSET; led < MIXED_LEDS; ++led) {
-    TEST_ASSERT_CRGB(CRGB::Red, leds[led]);
+    TEST_ASSERT_PIXEL(RED, leds.getPixelColor(led));
   }
 
   // '1' on the 2-pixel-per-segment digit lights only the right segments:
   // UPPER_RIGHT (index 5) and LOWER_RIGHT (index 6).
-  display.setModule(0, '1', CRGB::Green);
+  display.setModule(0, '1', GREEN);
   for (uint16_t led = 0; led < MIXED_MODULE1_OFFSET; ++led) {
     const bool lit = led >= 10;  // segments 5 and 6 start at LED 10
-    TEST_ASSERT_CRGB(lit ? CRGB::Green : CRGB::Black, leds[led]);
+    TEST_ASSERT_PIXEL(lit ? GREEN : BLACK, leds.getPixelColor(led));
   }
   // Module 1 must remain untouched by writes to module 0.
   for (uint16_t led = MIXED_MODULE1_OFFSET; led < MIXED_LEDS; ++led) {
-    TEST_ASSERT_CRGB(CRGB::Red, leds[led]);
+    TEST_ASSERT_PIXEL(RED, leds.getPixelColor(led));
   }
 
   // Switching to a blank clears only the target module.
-  display.setModule(0, ' ', CRGB::Green);
+  display.setModule(0, ' ', GREEN);
   for (uint16_t led = 0; led < MIXED_MODULE1_OFFSET; ++led) {
-    TEST_ASSERT_CRGB(CRGB::Black, leds[led]);
+    TEST_ASSERT_PIXEL(BLACK, leds.getPixelColor(led));
   }
   for (uint16_t led = MIXED_MODULE1_OFFSET; led < MIXED_LEDS; ++led) {
-    TEST_ASSERT_CRGB(CRGB::Red, leds[led]);
+    TEST_ASSERT_PIXEL(RED, leds.getPixelColor(led));
   }
 }
 
@@ -106,42 +111,46 @@ void testMixedClockLayoutPrintString() {
   static_assert(CLOCK_LEDS == 86, "mixed clock layout size");
 
   // Offsets: modules at 0, 28, 56, 58, 72. Module sizes 28, 28, 2, 14, 14.
-  CRGB leds[CLOCK_LEDS];
-  fill_solid(leds, CLOCK_LEDS, CRGB::Black);
+  Adafruit_NeoPixel leds(CLOCK_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+  leds.begin();
+  leds.clear();
 
   Modular7Segment display(leds, CLOCK_LAYOUT, 4, 1);
   TEST_ASSERT_TRUE(display.isValid());
   TEST_ASSERT_EQUAL_UINT8(5, display.moduleCount());
 
-  display.printString("12:34", CRGB::Green);
+  display.printString("12:34", GREEN);
 
   // Colon (2 LEDs with the default pixels-per-dot) is lit.
-  TEST_ASSERT_CRGB(CRGB::Green, leds[56]);
-  TEST_ASSERT_CRGB(CRGB::Green, leds[57]);
+  TEST_ASSERT_PIXEL(GREEN, leds.getPixelColor(56));
+  TEST_ASSERT_PIXEL(GREEN, leds.getPixelColor(57));
 
   // Last digit '4' (2 px/segment) lights MIDDLE, UPPER_LEFT, UPPER_RIGHT,
   // LOWER_RIGHT -> LEDs 76..79 and 82..85 relative to module offset 72.
   for (uint16_t led = 72; led < 86; ++led) {
     const uint16_t rel = led - 72;
     const bool lit = (rel >= 4 && rel <= 7) || (rel >= 10 && rel <= 13);
-    TEST_ASSERT_CRGB(lit ? CRGB::Green : CRGB::Black, leds[led]);
+    TEST_ASSERT_PIXEL(lit ? GREEN : BLACK, leds.getPixelColor(led));
   }
 }
 
 void testSentinelsUntouched() {
-  CRGB leds[MIXED_LEDS + 2];
-  fill_solid(leds, MIXED_LEDS + 2, CRGB::Blue);
+  Adafruit_NeoPixel leds(MIXED_LEDS + 2, DATA_PIN, NEO_GRB + NEO_KHZ800);
+  leds.begin();
+  for (uint16_t led = 0; led < MIXED_LEDS + 2; ++led) {
+    leds.setPixelColor(led, BLUE);
+  }
 
   Modular7Segment display(leds, MIXED_LAYOUT, 2, 1);
   TEST_ASSERT_TRUE(display.isValid());
 
-  display.printString("88", CRGB::Red);
-  TEST_ASSERT_CRGB(CRGB::Blue, leds[MIXED_LEDS]);
-  TEST_ASSERT_CRGB(CRGB::Blue, leds[MIXED_LEDS + 1]);
+  display.printString("88", RED);
+  TEST_ASSERT_PIXEL(BLUE, leds.getPixelColor(MIXED_LEDS));
+  TEST_ASSERT_PIXEL(BLUE, leds.getPixelColor(MIXED_LEDS + 1));
 
   display.clear();
-  TEST_ASSERT_CRGB(CRGB::Blue, leds[MIXED_LEDS]);
-  TEST_ASSERT_CRGB(CRGB::Blue, leds[MIXED_LEDS + 1]);
+  TEST_ASSERT_PIXEL(BLUE, leds.getPixelColor(MIXED_LEDS));
+  TEST_ASSERT_PIXEL(BLUE, leds.getPixelColor(MIXED_LEDS + 1));
 }
 
 void testColonDecimalUseOwnSize() {
@@ -157,16 +166,17 @@ void testColonDecimalUseOwnSize() {
     constexpr uint16_t NUM = Modular7Segment::requiredLeds(LAYOUT, 2, 1);
     static_assert(NUM == 46, "colon regression layout size");
 
-    CRGB leds[NUM];
-    fill_solid(leds, NUM, CRGB::Black);
+    Adafruit_NeoPixel leds(NUM, DATA_PIN, NEO_GRB + NEO_KHZ800);
+    leds.begin();
+    leds.clear();
 
     Modular7Segment display(leds, LAYOUT, 2, 1);
     TEST_ASSERT_TRUE(display.isValid());
 
-    display.setModule(2, ':', CRGB::Red);
+    display.setModule(2, ':', RED);
     for (uint16_t led = 0; led < NUM; ++led) {
       const bool lit = led >= 28 && led < 32;
-      TEST_ASSERT_CRGB(lit ? CRGB::Red : CRGB::Black, leds[led]);
+      TEST_ASSERT_PIXEL(lit ? RED : BLACK, leds.getPixelColor(led));
     }
   }
 
@@ -178,24 +188,28 @@ void testColonDecimalUseOwnSize() {
     static_assert(NUM == 43, "decimal regression layout size");
     constexpr uint16_t SENTINELS = 16;
 
-    CRGB leds[NUM + SENTINELS];
-    fill_solid(leds, NUM + SENTINELS, CRGB::Blue);
+    Adafruit_NeoPixel leds(NUM + SENTINELS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+    leds.begin();
+    for (uint16_t led = 0; led < NUM + SENTINELS; ++led) {
+      leds.setPixelColor(led, BLUE);
+    }
 
     Modular7Segment display(leds, LAYOUT, 2, 1);
     TEST_ASSERT_TRUE(display.isValid());
 
-    display.setModule(3, '.', CRGB::Green);
+    display.setModule(3, '.', GREEN);
     for (uint16_t led = 0; led < NUM; ++led) {
-      TEST_ASSERT_CRGB(led == 42 ? CRGB::Green : CRGB::Blue, leds[led]);
+      TEST_ASSERT_PIXEL(led == 42 ? GREEN : BLUE, leds.getPixelColor(led));
     }
     for (uint16_t led = NUM; led < NUM + SENTINELS; ++led) {
-      TEST_ASSERT_CRGB(CRGB::Blue, leds[led]);
+      TEST_ASSERT_PIXEL(BLUE, leds.getPixelColor(led));
     }
   }
 }
 
 void testInvalidInlineCountsRejected() {
-  CRGB leds[300];
+  Adafruit_NeoPixel leds(300, DATA_PIN, NEO_GRB + NEO_KHZ800);
+  leds.begin();
   TEST_ASSERT_FALSE(Modular7Segment(leds, "D0", 3, 1).isValid());
   TEST_ASSERT_FALSE(Modular7Segment(leds, "D256", 3, 1).isValid());
   TEST_ASSERT_FALSE(Modular7Segment(leds, "D1234", 3, 1).isValid());

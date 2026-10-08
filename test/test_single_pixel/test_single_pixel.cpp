@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 // Minimal hardware validation: no display library, no Wi-Fi, no OTA.
 // Expected result: only physical LED #0 lights dim red.
@@ -14,19 +14,19 @@
 constexpr uint8_t DATA_PIN = 27;
 constexpr uint16_t NUM_LEDS = 49;
 
-CRGB leds[NUM_LEDS];
+Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup() {
   delay(500);
 
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(32);
-
-  FastLED.clear(true);
+  leds.begin();
+  leds.setBrightness(32);
+  leds.clear();
+  leds.show();
   delay(1000);
 
-  leds[0] = CRGB::Red;
-  FastLED.show();
+  leds.setPixelColor(0, leds.Color(255, 0, 0));
+  leds.show();
 }
 
 void loop() {}
