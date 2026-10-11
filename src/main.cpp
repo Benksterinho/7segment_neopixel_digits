@@ -7,16 +7,23 @@
 #include "wifi_config.h"
 
 constexpr uint8_t DATA_PIN = 27;
-constexpr char LAYOUT[] = "D3D4";
+constexpr char LAYOUT[] = "DDD";
+constexpr uint8_t countDigitModules(const char* layout) {
+  return *layout == '\0'
+             ? 0
+             : (*layout == 'D' ? 1 : 0) + countDigitModules(layout + 1);
+}
+constexpr uint8_t DISPLAY_DIGIT_COUNT = countDigitModules(LAYOUT);
+static_assert(DISPLAY_DIGIT_COUNT > 0, "Layout must contain a digit");
 // Fallbacks only: every module in LAYOUT has an inline pixel count, but the
 // library requires non-zero fallback values.
-constexpr uint8_t PIXELS_PER_SEGMENT = 1;
+constexpr uint8_t PIXELS_PER_SEGMENT = 4;
 constexpr uint8_t PIXELS_PER_DOT = 1;
 constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
   LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 static_assert(NUM_LEDS > 0, "Invalid display layout");
-constexpr uint32_t COUNT_INTERVAL_MS = 500;
-constexpr uint8_t BRIGHTNESS = 76;  // ~30% of 255
+constexpr uint32_t COUNT_INTERVAL_MS = 1000;
+constexpr uint8_t BRIGHTNESS = 50;  // ~30% of 255
 
 constexpr char OTA_HOSTNAME[] = "neopixel-clock";
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
@@ -27,9 +34,9 @@ uint32_t lastWifiReconnectAttempt = 0;
 Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 
-constexpr uint8_t COUNTER_MAX = 20;
+constexpr uint16_t COUNTER_MAX = 999;
 
-uint8_t counter = 0;
+uint16_t counter = 0;
 uint32_t lastCountChange = 0;
 
 void setupOta() {
@@ -78,8 +85,12 @@ void maintainWifi() {
 }
 
 void showCounter() {
-  const char text[3] = {static_cast<char>('0' + counter / 10),
-                        static_cast<char>('0' + counter % 10), '\0'};
+  char text[DISPLAY_DIGIT_COUNT + 1] = {};
+  uint16_t value = counter;
+  for (uint8_t index = DISPLAY_DIGIT_COUNT; index > 0; --index) {
+    text[index - 1] = static_cast<char>('0' + value % 10);
+    value /= 10;
+  }
   display.printString(text, leds.Color(255, 0, 0));
   leds.show();
 }
@@ -101,7 +112,7 @@ void setup() {
   Serial.printf("Display valid: %s\n", display.isValid() ? "yes" : "no");
 
   if (display.isValid()) {
-    showCounter();  // Show "00" while Wi-Fi connects below.
+    showCounter();  // Show zero while Wi-Fi connects below.
   }
 
   // Connect Wi-Fi/OTA last: the up-to-15 s blocking wait no longer leaves
