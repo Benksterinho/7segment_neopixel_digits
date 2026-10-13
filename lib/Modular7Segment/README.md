@@ -78,9 +78,10 @@ static_assert(NUM_LEDS > 0, "Invalid display layout");
 
 ## Supported characters
 
-Digits `0`–`9`, hexadecimal letters `A`–`F` (case-insensitive), and space
-(blank). Unsupported characters render the digit as off. Colon and decimal
-point modules light up only for their matching punctuation character.
+Digits `0`–`9`, hexadecimal letters `A`–`F` (case-insensitive), dash `-`
+(middle segment), and space (blank). Unsupported characters render the digit as
+off. Colon and decimal point modules light up only for their matching
+punctuation character.
 
 ## printString() behavior
 

@@ -196,6 +196,7 @@ uint8_t Modular7Segment::characterMask(char character) {
     case 'e': return E;
     case 'F':
     case 'f': return F;
+    case '-': return MIDDLE_MASK;
     default: return 0;
   }
 }
