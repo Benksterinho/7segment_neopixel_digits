@@ -8,7 +8,7 @@
 #include "mqtt/mqtt_module.h"
 
 // Subscribes to the SCD41 CO2 sensor state topic,
-// parses ppm values, tracks freshness, and maps to air-quality indicator colors.
+// parses ppm values, and tracks freshness.
 class MqttCo2Sensor : public IMqttModule {
  public:
   using UpdateCallback = void (*)(uint16_t ppm);
@@ -25,10 +25,6 @@ class MqttCo2Sensor : public IMqttModule {
 
   // Parses CO2 payload (integer or floating point string, e.g. "650" or "650.0")
   static bool parsePayload(const char* payload, size_t length, uint16_t& outPpm);
-
-  // Evaluates air-quality color:
-  // Green (< 800), Yellow (800..1199), Red (>= 1200)
-  static void getColorRgb(uint16_t ppm, uint8_t& r, uint8_t& g, uint8_t& b);
 
  private:
   const char* topic_ = nullptr;

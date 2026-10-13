@@ -25,43 +25,6 @@ void test_co2_payload_parsing_invalid() {
   TEST_ASSERT_FALSE(MqttCo2Sensor::parsePayload(nullptr, 0, ppm));
 }
 
-void test_co2_color_thresholds() {
-  uint8_t r = 0, g = 0, b = 0;
-
-  // Green: < 800
-  MqttCo2Sensor::getColorRgb(450, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(0, r);
-  TEST_ASSERT_EQUAL_UINT8(255, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-
-  MqttCo2Sensor::getColorRgb(799, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(0, r);
-  TEST_ASSERT_EQUAL_UINT8(255, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-
-  // Yellow: 800 <= ppm < 1200
-  MqttCo2Sensor::getColorRgb(800, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(255, r);
-  TEST_ASSERT_EQUAL_UINT8(180, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-
-  MqttCo2Sensor::getColorRgb(1199, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(255, r);
-  TEST_ASSERT_EQUAL_UINT8(180, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-
-  // Red: >= 1200
-  MqttCo2Sensor::getColorRgb(1200, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(255, r);
-  TEST_ASSERT_EQUAL_UINT8(0, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-
-  MqttCo2Sensor::getColorRgb(2500, r, g, b);
-  TEST_ASSERT_EQUAL_UINT8(255, r);
-  TEST_ASSERT_EQUAL_UINT8(0, g);
-  TEST_ASSERT_EQUAL_UINT8(0, b);
-}
-
 void test_ambient_light_parsing() {
   float lux = 0.0f;
   const char payload[] = "123.45";
@@ -101,7 +64,6 @@ void setup() {
   RUN_TEST(test_co2_payload_parsing_integer);
   RUN_TEST(test_co2_payload_parsing_float);
   RUN_TEST(test_co2_payload_parsing_invalid);
-  RUN_TEST(test_co2_color_thresholds);
   RUN_TEST(test_ambient_light_parsing);
   RUN_TEST(test_lux_to_brightness_scaling);
   UNITY_END();

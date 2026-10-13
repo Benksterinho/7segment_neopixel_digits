@@ -54,23 +54,3 @@ bool MqttCo2Sensor::parsePayload(const char* payload, size_t length,
   outPpm = static_cast<uint16_t>(val + 0.5f);
   return true;
 }
-
-void MqttCo2Sensor::getColorRgb(uint16_t ppm, uint8_t& r, uint8_t& g,
-                                uint8_t& b) {
-  if (ppm < 800) {
-    // Green
-    r = 0;
-    g = 255;
-    b = 0;
-  } else if (ppm < 1200) {
-    // Yellow
-    r = 255;
-    g = 180;
-    b = 0;
-  } else {
-    // Red
-    r = 255;
-    g = 0;
-    b = 0;
-  }
-}

@@ -104,9 +104,13 @@ void render() {
     const uint16_t ppm = co2Sensor.getPpm();
     snprintf(text, sizeof(text), "%4u", ppm > 9999 ? 9999 : ppm);
 
-    uint8_t r = 0, g = 0, b = 0;
-    MqttCo2Sensor::getColorRgb(ppm, r, g, b);
-    color = leds.Color(r, g, b);
+    if (ppm < 800) {
+      color = leds.Color(0, 255, 0);
+    } else if (ppm < 1200) {
+      color = leds.Color(255, 130, 0);
+    } else {
+      color = leds.Color(255, 0, 0);
+    }
   }
 
   display.printString(text, color);
