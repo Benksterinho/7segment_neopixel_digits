@@ -45,7 +45,9 @@ mosquitto_pub ... -m '{"color":{"r":0,"g":255,"b":0}}'
 
 ## Behavior
 
-- Off blanks the strip; the counter keeps running in the background.
+- Off blanks the strip in both Time and CO2 modes; mode cycling continues in
+  the background. Sensor updates and brightness/color-only commands do not
+  turn the light back on.
 - Brightness is clamped to 1–255, color channels to 0–255. Invalid commands are
   ignored, and the current state is republished so Home Assistant stays in sync.
 - On/off, brightness and color are stored in NVS (written ~2 s after the last
@@ -58,3 +60,30 @@ mosquitto_pub ... -m '{"color":{"r":0,"g":255,"b":0}}'
 ```sh
 .venv/bin/pio test -e wemos_d1_mini32 -f test_light_command
 ```
+
+## Troubleshooting an unexpected turn-on
+
+Monitor the command and state topics together while reproducing the problem
+(commands should **not** be retained):
+
+```sh
+mosquitto_sub -h <broker> -u <user> -P <pass> -v \
+  -t 'neopixel-clock/<id>/set' \
+  -t 'neopixel-clock/<id>/state' \
+  -t 'neopixel-clock/<id>/status'
+```
+
+- An `ON` message on the command topic identifies an incoming MQTT command,
+  not a display-mode change. Check Home Assistant automations and other
+  publishers of the command topic. Brightness/color automations should check
+  the light's current state before calling `light.turn_on`, since that service
+  also turns an OFF light on. A retained `ON` command can replay after a
+  reconnect or Home Assistant re-announcement.
+- Use the serial console at 115200 baud to check for a restart. State
+  persistence is debounced by about two seconds, so a restart immediately
+  after an OFF command may restore the previous state.
+- If MQTT state stays OFF but LEDs illuminate, investigate the deployed
+  firmware and LED output separately.
+
+Timing alone (including a roughly 60-second recurrence) does not identify the
+cause. Capture the command/state topics and serial logs across the recurrence.

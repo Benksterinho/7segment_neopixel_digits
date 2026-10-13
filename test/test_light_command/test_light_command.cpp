@@ -60,6 +60,23 @@ void test_partial_color_keeps_other_channels() {
   assertState(state, true, 50, 255, 10, 0);
 }
 
+void test_updates_without_on_command_keep_light_off() {
+  LightState state;
+  apply(state, R"({"state":"OFF"})");
+  TEST_ASSERT_EQUAL(LightCommandResult::Changed,
+                    apply(state, R"({"brightness":128})"));
+  assertState(state, false, 128, 255, 0, 0);
+  TEST_ASSERT_EQUAL(LightCommandResult::Changed,
+                    apply(state, R"({"color":{"g":10}})"));
+  assertState(state, false, 128, 255, 10, 0);
+  TEST_ASSERT_EQUAL(LightCommandResult::Unchanged,
+                    apply(state, R"({"state":"OFF"})"));
+  TEST_ASSERT_FALSE(state.on);
+  TEST_ASSERT_EQUAL(LightCommandResult::Changed,
+                    apply(state, R"({"state":"ON"})"));
+  assertState(state, true, 128, 255, 10, 0);
+}
+
 void test_same_state_is_unchanged() {
   LightState state;
   TEST_ASSERT_EQUAL(LightCommandResult::Unchanged,
@@ -116,6 +133,7 @@ void setup() {
   RUN_TEST(test_brightness_is_clamped);
   RUN_TEST(test_color_update_and_clamp);
   RUN_TEST(test_partial_color_keeps_other_channels);
+  RUN_TEST(test_updates_without_on_command_keep_light_off);
   RUN_TEST(test_same_state_is_unchanged);
   RUN_TEST(test_invalid_payloads_leave_state_untouched);
   RUN_TEST(test_serialize_state_round_trips);
