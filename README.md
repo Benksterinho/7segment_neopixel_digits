@@ -14,7 +14,7 @@ The system alternates between showing the synchronized **current local time** an
   - **MQTT Core (`src/mqtt/`)**: `MqttManager` handles connection lifecycle, reconnect backoff, and routes messages to registered `IMqttModule` implementations.
   - **Sensors (`src/sensors/`)**: Plug-in MQTT sensors such as `MqttCo2Sensor` and `MqttAmbientLightSensor`.
 - **Dual Display Modes (30-second cycle)**:
-  - **Time Mode (30s)**: Formats current local time (24h `HHMM`) using the configured Home Assistant light color. Shows `----` if time is not yet synced via NTP.
+  - **Time Mode (30s)**: Formats current local time (24h `HH.MM`) using the configured Home Assistant light color, blinking the decimal point every second. Shows `----` if time is not yet synced via NTP.
   - **CO2 Mode (30s)**: Displays SCD41 CO2 concentration (right-aligned ppm, e.g. ` 750`). Color-coded by air quality thresholds:
     - **Green**: `< 800 ppm` (Good)
     - **Yellow**: `800 .. 1199 ppm` (Fair)

@@ -17,7 +17,7 @@
 
 // Hardware Configuration
 constexpr uint8_t DATA_PIN = 27;
-constexpr char LAYOUT[] = "DDDD";
+constexpr char LAYOUT[] = "DD.DD";
 constexpr uint8_t countDigitModules(const char* layout) {
   return *layout == '\0'
              ? 0
@@ -91,11 +91,14 @@ void render() {
   const uint8_t effectiveBrightness = resolveEffectiveBrightness();
   leds.setBrightness(effectiveBrightness);
 
-  char text[DISPLAY_DIGIT_COUNT + 1] = {};
+  char text[DISPLAY_DIGIT_COUNT + 2] = {};
   uint32_t color = 0;
 
   if (currentMode == DisplayMode::TIME || !co2Sensor.hasValue()) {
-    if (!timeSync.getFormattedTime(text, sizeof(text), "%H%M")) {
+    const bool dotOn =
+        (millis() / DISPLAY_REFRESH_INTERVAL_MS) % 2 == 0;
+    const char* timeFormat = dotOn ? "%H.%M" : "%H%M";
+    if (!timeSync.getFormattedTime(text, sizeof(text), timeFormat)) {
       snprintf(text, sizeof(text), "----");
     }
     color = leds.Color(lightState.red, lightState.green, lightState.blue);
