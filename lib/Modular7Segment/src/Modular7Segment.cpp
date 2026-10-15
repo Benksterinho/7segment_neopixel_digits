@@ -40,14 +40,33 @@ constexpr uint8_t D = UPPER_RIGHT_MASK | MIDDLE_MASK | LOWER_LEFT_MASK |
 constexpr uint8_t E = TOP_MASK | UPPER_LEFT_MASK | MIDDLE_MASK |
                       LOWER_LEFT_MASK | BOTTOM_MASK;
 constexpr uint8_t F = TOP_MASK | UPPER_LEFT_MASK | MIDDLE_MASK | LOWER_LEFT_MASK;
+
+uint32_t brighterDotColor(uint32_t color, uint8_t brightnessPercent) {
+  const auto scaleChannel = [brightnessPercent](uint8_t channel) -> uint8_t {
+    const uint16_t scaled =
+        (static_cast<uint16_t>(channel) * brightnessPercent + 50) /
+        100;
+    return scaled > 255 ? 255 : static_cast<uint8_t>(scaled);
+  };
+
+  return (static_cast<uint32_t>(
+              scaleChannel(static_cast<uint8_t>((color >> 16) & 0xFF)))
+          << 16) |
+         (static_cast<uint32_t>(
+              scaleChannel(static_cast<uint8_t>((color >> 8) & 0xFF)))
+          << 8) |
+         scaleChannel(static_cast<uint8_t>(color & 0xFF));
+}
 }  // namespace
 
 Modular7Segment::Modular7Segment(Adafruit_NeoPixel& leds, const char* layout,
                                  uint8_t pixelsPerSegment,
-                                 uint8_t pixelsPerDot)
+                                 uint8_t pixelsPerDot,
+                                 uint8_t dotBrightnessPercent)
     : leds_(leds),
       pixelsPerSegment_(pixelsPerSegment),
       pixelsPerDot_(pixelsPerDot),
+      dotBrightnessPercent_(dotBrightnessPercent),
       moduleCount_(0),
       requiredLeds_(0),
       valid_(layout != nullptr && pixelsPerSegment > 0 && pixelsPerDot > 0) {
@@ -127,8 +146,10 @@ void Modular7Segment::setModule(uint8_t moduleIndex, char character,
 
   // moduleSize() takes a module index, not the ModuleType enum value.
   const uint16_t count = moduleSize(moduleIndex);
+  const uint32_t dotColor =
+      brighterDotColor(color, dotBrightnessPercent_);
   for (uint16_t pixel = 0; pixel < count; ++pixel) {
-    leds_.setPixelColor(moduleOffset + pixel, color);
+    leds_.setPixelColor(moduleOffset + pixel, dotColor);
   }
 }
 

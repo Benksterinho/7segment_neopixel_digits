@@ -22,7 +22,8 @@ class Modular7Segment {
   }
 
   Modular7Segment(Adafruit_NeoPixel& leds, const char* layout,
-                  uint8_t pixelsPerSegment, uint8_t pixelsPerDot);
+                  uint8_t pixelsPerSegment, uint8_t pixelsPerDot,
+                  uint8_t dotBrightnessPercent = 110);
 
   void setModule(uint8_t moduleIndex, char character, uint32_t color);
   void printString(const char* text, uint32_t color);
@@ -118,6 +119,7 @@ class Modular7Segment {
   Adafruit_NeoPixel& leds_;
   uint8_t pixelsPerSegment_;
   uint8_t pixelsPerDot_;
+  uint8_t dotBrightnessPercent_;
   uint16_t moduleOffsets_[MAX_MODULES];
   ModuleType moduleTypes_[MAX_MODULES];
   // DIGIT modules: pixels per segment; COLON/DECIMAL_POINT: pixels per dot.

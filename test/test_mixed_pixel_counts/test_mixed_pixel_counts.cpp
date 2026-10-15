@@ -134,6 +134,34 @@ void testMixedClockLayoutPrintString() {
   }
 }
 
+void testDotsAreTenPercentBrighterThanSegments() {
+  constexpr char LAYOUT[] = "D:.";
+  constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(LAYOUT, 4, 1);
+  Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+  leds.begin();
+  leds.clear();
+
+  Modular7Segment display(leds, LAYOUT, 4, 1);
+  const uint32_t color = leds.Color(100, 50, 25);
+  const uint32_t brighterColor = leds.Color(110, 55, 28);
+  display.printString("8:.", color);
+
+  for (uint16_t pixel = 0; pixel < 28; ++pixel) {
+    TEST_ASSERT_PIXEL(color, leds.getPixelColor(pixel));
+  }
+  for (uint16_t pixel = 28; pixel < NUM_LEDS; ++pixel) {
+    TEST_ASSERT_PIXEL(brighterColor, leds.getPixelColor(pixel));
+  }
+
+  display.printString("8", leds.Color(255, 200, 100));
+  display.setModule(1, ':', leds.Color(255, 200, 100));
+  TEST_ASSERT_PIXEL(leds.Color(255, 220, 110), leds.getPixelColor(28));
+
+  Modular7Segment customDisplay(leds, LAYOUT, 4, 1, 125);
+  customDisplay.setModule(1, ':', color);
+  TEST_ASSERT_PIXEL(leds.Color(125, 63, 31), leds.getPixelColor(28));
+}
+
 void testSentinelsUntouched() {
   Adafruit_NeoPixel leds(MIXED_LEDS + 2, DATA_PIN, NEO_GRB + NEO_KHZ800);
   leds.begin();
@@ -226,6 +254,7 @@ void setup() {
   UNITY_BEGIN();
   RUN_TEST(testMixedDigitRendering);
   RUN_TEST(testMixedClockLayoutPrintString);
+  RUN_TEST(testDotsAreTenPercentBrighterThanSegments);
   RUN_TEST(testSentinelsUntouched);
   RUN_TEST(testColonDecimalUseOwnSize);
   RUN_TEST(testInvalidInlineCountsRejected);

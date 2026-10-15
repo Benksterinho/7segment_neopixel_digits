@@ -1,5 +1,6 @@
 {
     "chat.tools.terminal.autoApprove": {
-        ".venv/bin/pio": true
+        ".venv/bin/pio": true,
+        "./.venv/bin/platformio": true
     }
 }

@@ -68,6 +68,7 @@ static_assert(NUM_LEDS > 0, "Invalid display layout");
 ## API
 
 - `Modular7Segment(Adafruit_NeoPixel& leds, const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot)`
+- `Modular7Segment(Adafruit_NeoPixel& leds, const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot, uint8_t dotBrightnessPercent)`
 - `static constexpr uint16_t requiredLeds(const char* layout, uint8_t pixelsPerSegment, uint8_t pixelsPerDot)`
 - `void setModule(uint8_t moduleIndex, char character, uint32_t color)`
 - `void printString(const char* text, uint32_t color)`
@@ -88,6 +89,10 @@ punctuation character.
 - Digit modules consume one input character.
 - Colon and decimal-point modules consume their matching punctuation only
   when it is present at the current input position; otherwise they stay off.
+- Colon and decimal-point colors are scaled by `dotBrightnessPercent` per RGB
+  channel (default `110`, i.e. 10% brighter), capped at full intensity. Set it
+  to `100` for no change or `0` to turn dots off. Digit segment colors are
+  unchanged.
 - Missing digit characters render blank; extra trailing input is ignored.
 - A null text pointer is treated as an empty string.
 

@@ -32,6 +32,7 @@ static_assert(DISPLAY_DIGIT_COUNT > 0, "Layout must contain a digit");
 
 constexpr uint8_t PIXELS_PER_SEGMENT = 4;
 constexpr uint8_t PIXELS_PER_DOT = 1;
+constexpr uint8_t DOT_BRIGHTNESS_PERCENT = 130;
 constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
     LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 static_assert(NUM_LEDS > 0, "Invalid display layout");
@@ -56,7 +57,8 @@ void onAmbientLightUpdate(float lux, uint8_t computedBrightness);
 
 // Hardware and State
 Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
-Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
+Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT,
+                        DOT_BRIGHTNESS_PERCENT);
 LightState lightState;
 LightStore lightStore;
 
