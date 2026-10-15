@@ -8,5 +8,7 @@ constexpr char MQTT_USER[] = "your-mqtt-user";
 constexpr char MQTT_PASSWORD[] = "your-mqtt-password";
 
 constexpr char MQTT_CO2_TOPIC[] = "env-sensor-station/sensor/scd41_co2/state";
+constexpr char MQTT_TEMPERATURE_TOPIC[] =
+    "env-sensor-station/sensor/bme688_temperature/state";
 constexpr char MQTT_AMBIENT_LIGHT_TOPIC[] =
     "env-sensor-station/sensor/ambient_light/state";

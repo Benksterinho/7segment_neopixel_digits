@@ -2,7 +2,7 @@
 
 An ESP32-based modular firmware for driving daisy-chained WS2812B / NeoPixel 7-segment displays.
 
-The system alternates between showing the synchronized **current local time** and **SCD41 CO2 readings**, with dynamic **auto-brightness** based on room ambient lux, full **Home Assistant MQTT integration**, and **ArduinoOTA** support.
+The system cycles through synchronized **current local time**, **SCD41 CO2 readings**, and **BME688 temperature**, with dynamic **auto-brightness** based on room ambient lux, full **Home Assistant MQTT integration**, and **ArduinoOTA** support.
 
 ---
 
@@ -12,14 +12,22 @@ The system alternates between showing the synchronized **current local time** an
   - **Hardware / Display**: `Modular7Segment` runs completely standalone without any network or MQTT requirements.
   - **Network (`src/net/`)**: Self-contained `WifiManager`, `OtaManager`, and `TimeSync` (SNTP).
   - **MQTT Core (`src/mqtt/`)**: `MqttManager` handles connection lifecycle, reconnect backoff, and routes messages to registered `IMqttModule` implementations.
-  - **Sensors (`src/sensors/`)**: Plug-in MQTT sensors such as `MqttCo2Sensor` and `MqttAmbientLightSensor`.
-- **Dual Display Modes (30-second cycle)**:
+  - **Display Logic (`src/display/`)**: `DisplayModeController` decides the active mode (auto cycling vs. manual) without any MQTT or LED dependencies.
+  - **Sensors (`src/sensors/`)**: Plug-in MQTT sensors for CO2, temperature, and ambient light.
+- **Three Display Modes (30-second cycle)**:
   - **Time Mode (30s)**: Formats current local time (24h `HH.MM`) using the configured Home Assistant light color, blinking the decimal point every second. Shows `----` if time is not yet synced via NTP.
   - **CO2 Mode (30s)**: Displays SCD41 CO2 concentration (right-aligned ppm, e.g. ` 750`). Color-coded by air quality thresholds:
     - **Green**: `< 800 ppm` (Good)
     - **Yellow**: `800 .. 1199 ppm` (Fair)
     - **Red**: `≥ 1200 ppm` (Poor / Ventilate)
-  - Falls back gracefully to Time Mode if no CO2 reading has been received yet.
+  - **Temperature Mode (30s)**: Subscribes to `env-sensor-station/sensor/bme688_temperature/state` (Celsius) and uses the configured Home Assistant light color. The leftmost digit stays blank; the rightmost three show one decimal place (` 25.7`, `  5.2`, ` -5.2`). Values outside -9.9 to 99.9 degrees Celsius show ` ---` without clipping. Readings are rounded to the nearest tenth; rounded negative zero displays as zero.
+  - The physical layout is `DD.D.D.` (115 LEDs with 4 pixels per segment and 1 per dot). Temperature lights only the decimal before the last digit. Time blinks only the hours/minutes separator; CO2 uses no dots. The trailing dot stays off.
+  - Auto mode skips each sensor independently until a valid reading arrives. Manually selecting a sensor without a reading shows Time until its first valid reading.
+- **Display Mode Selection (Home Assistant)**:
+  - `Auto Mode` switch: while **ON**, the display cycles Time → CO2 → Temperature → Time every 30 s, skipping unavailable sensors.
+  - `Display Mode` select (`Time` / `CO2` / `Temperature`): picking a mode shows it immediately and turns `Auto Mode` **OFF**, pinning that mode.
+  - Turning `Auto Mode` back ON resumes cycling. The select only reflects the last manual choice.
+  - Both are persisted in NVS and restored on boot.
 - **Ambient Light & Auto-Brightness**:
   - Subscribes to ambient lux readings from MQTT (`env-sensor-station/sensor/ambient_light/state`).
   - Home Assistant MQTT switch entity (`Auto-Brightness`) to toggle between automatic and manual brightness control.
@@ -61,9 +69,14 @@ The system alternates between showing the synchronized **current local time** an
 │   │   ├── mqtt_module.h          # IMqttModule lifecycle interface
 │   │   ├── mqtt_manager.h/.cpp    # Central PubSubClient & message dispatcher
 │   │   ├── mqtt_light_module.h/.cpp  # HA MQTT Light entity
-│   │   └── mqtt_switch_module.h/.cpp # HA MQTT Switch entity (Auto-Brightness)
+│   │   ├── mqtt_switch_module.h/.cpp # HA MQTT Switch entity (Auto-Brightness, Auto Mode)
+│   │   └── mqtt_select_module.h/.cpp # HA MQTT Select entity (Display Mode)
+│   ├── display/
+│   │   ├── display_mode_controller.h/.cpp # Auto cycling / manual display mode logic
+│   │   └── temperature_format.h/.cpp # Right-three-digit temperature formatting
 │   ├── sensors/
 │   │   ├── mqtt_co2_sensor.h/.cpp # SCD41 CO2 subscriber & color mapper
+│   │   ├── mqtt_temperature_sensor.h/.cpp # BME688 Celsius subscriber
 │   │   └── mqtt_ambient_light_sensor.h/.cpp # Lux subscriber & log brightness
 │   └── main.cpp                   # Firmware orchestration & display loop
 ├── test/                          # Unit tests (parsing, thresholds, layouts)
@@ -100,6 +113,7 @@ Credentials and topics are cleanly separated by semantic concern:
    constexpr char MQTT_PASSWORD[] = "secret";
 
    constexpr char MQTT_CO2_TOPIC[] = "env-sensor-station/sensor/scd41_co2/state";
+   constexpr char MQTT_TEMPERATURE_TOPIC[] = "env-sensor-station/sensor/bme688_temperature/state";
    constexpr char MQTT_AMBIENT_LIGHT_TOPIC[] = "env-sensor-station/sensor/ambient_light/state";
    ```
 
@@ -145,7 +159,7 @@ void loop() {
 
 ### Example 2: Adding a Custom MQTT Sensor Module
 
-Adding a new sensor (e.g., temperature) to the shared `MqttManager` only requires implementing `IMqttModule`:
+Adding a custom sensor to the shared `MqttManager` requires implementing `IMqttModule`. The built-in `MqttTemperatureSensor` demonstrates bounded parsing, last-valid-reading storage, and update callbacks. The simplified example below illustrates the interface:
 
 ```cpp
 #include "mqtt/mqtt_module.h"

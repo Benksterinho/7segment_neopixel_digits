@@ -6,18 +6,22 @@
 #include "mqtt_config.h"
 #include "net_config.h"
 
+#include "display/display_mode_controller.h"
+#include "display/temperature_format.h"
 #include "mqtt/mqtt_light_module.h"
 #include "mqtt/mqtt_manager.h"
+#include "mqtt/mqtt_select_module.h"
 #include "mqtt/mqtt_switch_module.h"
 #include "net/ota_manager.h"
 #include "net/time_sync.h"
 #include "net/wifi_manager.h"
 #include "sensors/mqtt_ambient_light_sensor.h"
 #include "sensors/mqtt_co2_sensor.h"
+#include "sensors/mqtt_temperature_sensor.h"
 
 // Hardware Configuration
 constexpr uint8_t DATA_PIN = 27;
-constexpr char LAYOUT[] = "DD.DD";
+constexpr char LAYOUT[] = "DD.D.D.";
 constexpr uint8_t countDigitModules(const char* layout) {
   return *layout == '\0'
              ? 0
@@ -36,17 +40,18 @@ constexpr char OTA_HOSTNAME[] = "neopixel-clock";
 constexpr uint32_t MODE_SWITCH_INTERVAL_MS = 30000;
 constexpr uint32_t DISPLAY_REFRESH_INTERVAL_MS = 1000;
 
-// Display Mode
-enum class DisplayMode {
-  TIME,
-  CO2,
-};
+// Display mode options exposed to Home Assistant, indexed by DisplayMode
+constexpr const char* DISPLAY_MODE_OPTIONS[DisplayModeController::MODE_COUNT] = {
+    "Time", "CO2", "Temperature"};
 
 // Forward Declarations
 void render();
 void onLightCommand(const LightState& newState, bool brightnessSpecified);
 void onAutoBrightnessChange(bool enabled);
+void onAutoModeChange(bool enabled);
+void onDisplayModeSelect(uint8_t index);
 void onCo2Update(uint16_t ppm);
+void onTemperatureUpdate(float celsius);
 void onAmbientLightUpdate(float lux, uint8_t computedBrightness);
 
 // Hardware and State
@@ -65,13 +70,20 @@ MqttManager mqttManager;
 MqttLightModule lightModule(lightState, onLightCommand);
 MqttSwitchModule autoBrightnessSwitch("auto_brightness", "Auto-Brightness", true,
                                       onAutoBrightnessChange);
+MqttSwitchModule autoModeSwitch("auto_mode", "Auto Mode", true,
+                                onAutoModeChange);
+MqttSelectModule displayModeSelect("display_mode", "Display Mode",
+                                   DISPLAY_MODE_OPTIONS,
+                                   DisplayModeController::MODE_COUNT, 0,
+                                   onDisplayModeSelect);
 MqttCo2Sensor co2Sensor(MQTT_CO2_TOPIC, onCo2Update);
+MqttTemperatureSensor temperatureSensor(MQTT_TEMPERATURE_TOPIC,
+                                       onTemperatureUpdate);
 MqttAmbientLightSensor ambientLightSensor(MQTT_AMBIENT_LIGHT_TOPIC,
                                          onAmbientLightUpdate);
 
 // Display State
-DisplayMode currentMode = DisplayMode::TIME;
-uint32_t lastModeSwitchMs = 0;
+DisplayModeController modeController(MODE_SWITCH_INTERVAL_MS);
 uint32_t lastDisplayRefreshMs = 0;
 
 uint8_t resolveEffectiveBrightness() {
@@ -94,7 +106,10 @@ void render() {
   char text[DISPLAY_DIGIT_COUNT + 2] = {};
   uint32_t color = 0;
 
-  if (currentMode == DisplayMode::TIME || !co2Sensor.hasValue()) {
+  const DisplayMode mode = modeController.mode();
+  if (mode == DisplayMode::TIME ||
+      (mode == DisplayMode::CO2 && !co2Sensor.hasValue()) ||
+      (mode == DisplayMode::TEMPERATURE && !temperatureSensor.hasValue())) {
     const bool dotOn =
         (millis() / DISPLAY_REFRESH_INTERVAL_MS) % 2 == 0;
     const char* timeFormat = dotOn ? "%H.%M" : "%H%M";
@@ -102,7 +117,10 @@ void render() {
       snprintf(text, sizeof(text), "----");
     }
     color = leds.Color(lightState.red, lightState.green, lightState.blue);
-  } else {
+  } else if (mode == DisplayMode::TEMPERATURE) {
+    formatTemperature(temperatureSensor.getCelsius(), text);
+    color = leds.Color(lightState.red, lightState.green, lightState.blue);
+  } else if (mode == DisplayMode::CO2) {
     // CO2 Mode
     const uint16_t ppm = co2Sensor.getPpm();
     snprintf(text, sizeof(text), "%4u", ppm > 9999 ? 9999 : ppm);
@@ -137,9 +155,32 @@ void onAutoBrightnessChange(bool enabled) {
   lightModule.publishState();
 }
 
+void onAutoModeChange(bool enabled) {
+  modeController.setAuto(enabled, millis());
+  render();
+}
+
+void onDisplayModeSelect(uint8_t index) {
+  if (index >= DisplayModeController::MODE_COUNT) {
+    return;
+  }
+  autoModeSwitch.setState(false);
+  const uint32_t now = millis();
+  modeController.setAuto(false, now);
+  modeController.selectMode(static_cast<DisplayMode>(index), now);
+  render();
+}
+
 void onCo2Update(uint16_t ppm) {
   (void)ppm;
-  if (currentMode == DisplayMode::CO2) {
+  if (modeController.mode() == DisplayMode::CO2) {
+    render();
+  }
+}
+
+void onTemperatureUpdate(float celsius) {
+  (void)celsius;
+  if (modeController.mode() == DisplayMode::TEMPERATURE) {
     render();
   }
 }
@@ -168,6 +209,10 @@ void setup() {
   leds.show();
   delay(100);
 
+  modeController.begin(
+      autoModeSwitch.getState(),
+      static_cast<DisplayMode>(displayModeSelect.getIndex()), millis());
+
   Serial.printf("NUM_LEDS: %u\n", NUM_LEDS);
   Serial.printf("Display valid: %s\n", display.isValid() ? "yes" : "no");
 
@@ -187,12 +232,13 @@ void setup() {
   lightModule.setBrightnessProvider(resolveEffectiveBrightness);
   mqttManager.registerModule(&lightModule);
   mqttManager.registerModule(&autoBrightnessSwitch);
+  mqttManager.registerModule(&autoModeSwitch);
+  mqttManager.registerModule(&displayModeSelect);
   mqttManager.registerModule(&co2Sensor);
+  mqttManager.registerModule(&temperatureSensor);
   mqttManager.registerModule(&ambientLightSensor);
 
   mqttManager.begin(MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-
-  lastModeSwitchMs = millis();
 }
 
 void loop() {
@@ -207,15 +253,9 @@ void loop() {
     return;
   }
 
-  // Switch display mode every 30 seconds if CO2 reading is available
-  if (now - lastModeSwitchMs >= MODE_SWITCH_INTERVAL_MS) {
-    lastModeSwitchMs = now;
-    if (co2Sensor.hasValue()) {
-      currentMode = (currentMode == DisplayMode::TIME) ? DisplayMode::CO2
-                                                       : DisplayMode::TIME;
-    } else {
-      currentMode = DisplayMode::TIME;
-    }
+  // In auto mode, cycle every 30 seconds, skipping sensors without readings.
+  if (modeController.loop(now, co2Sensor.hasValue(),
+                          temperatureSensor.hasValue())) {
     render();
   }
 
