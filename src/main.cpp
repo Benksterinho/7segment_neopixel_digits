@@ -21,7 +21,7 @@
 
 // Hardware Configuration
 constexpr uint8_t DATA_PIN = 27;
-constexpr char LAYOUT[] = "DD.D.D.";
+constexpr char LAYOUT[] = "DD:D.D.";
 constexpr uint8_t countDigitModules(const char* layout) {
   return *layout == '\0'
              ? 0
@@ -114,13 +114,13 @@ void render() {
       (mode == DisplayMode::TEMPERATURE && !temperatureSensor.hasValue())) {
     const bool dotOn =
         (millis() / DISPLAY_REFRESH_INTERVAL_MS) % 2 == 0;
-    const char* timeFormat = dotOn ? "%H.%M" : "%H%M";
+    const char* timeFormat = dotOn ? "%H:%M" : "%H%M";
     if (!timeSync.getFormattedTime(text, sizeof(text), timeFormat)) {
       snprintf(text, sizeof(text), "----");
     }
     color = leds.Color(lightState.red, lightState.green, lightState.blue);
   } else if (mode == DisplayMode::TEMPERATURE) {
-    formatTemperature(temperatureSensor.getCelsius(), text);
+    formatTemperature(temperatureSensor.getCelsius() -2, text);
     color = leds.Color(lightState.red, lightState.green, lightState.blue);
   } else if (mode == DisplayMode::CO2) {
     // CO2 Mode
