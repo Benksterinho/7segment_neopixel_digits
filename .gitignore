@@ -10,6 +10,8 @@ AZ279_A_20-2_EN_B08BTRQNB3_5bbfc25f-6964-44b5-9ff2-dc872d3abc0b.pdf
 include/wifi_config.h
 include/net_config.h
 include/mqtt_config.h
+examples/*/include/config.h
+examples/*/.pio/
 __pycache__/
 *.py[cod]
 

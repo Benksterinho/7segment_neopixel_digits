@@ -4,6 +4,10 @@ An Adafruit NeoPixel-based 7-segment display library for modular WS2812B digit
 chains. The caller owns an `Adafruit_NeoPixel` strip; the library writes pixel
 colors into its buffer and leaves transmission to the caller.
 
+For buildable projects, see [numbers and layouts](../../examples/01_numbers_and_layouts/)
+and [colors and brightness](../../examples/02_colors/), or follow the
+[complete examples guide](../../examples/README.md).
+
 ## Layout string
 
 The layout string describes the physical modules in data-chain order:

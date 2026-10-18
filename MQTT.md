@@ -4,6 +4,11 @@ The firmware exposes the display as a Home Assistant **MQTT light** (JSON
 schema) with on/off, brightness and RGB color. It is discovered automatically
 via MQTT Discovery.
 
+For a step-by-step introduction, start with
+[MQTT Part 1: discovery and light control](examples/04_mqtt_discovery/), then
+[MQTT Part 2: subscribe to temperature](examples/05_mqtt_temperature/).
+These smaller projects do not require the full clock application's configuration.
+
 ## Configuration
 
 Add the broker settings to your local `include/wifi_config.h` (see

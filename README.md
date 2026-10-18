@@ -52,6 +52,7 @@ The system cycles through synchronized **current local time**, **SCD41 CO2 readi
 
 ```
 .
+├── examples/                      # Twelve runnable lessons, each with a README
 ├── include/
 │   ├── net_config.example.h       # Template for Wi-Fi & NTP configuration
 │   ├── mqtt_config.example.h      # Template for MQTT broker & sensor topics
@@ -234,6 +235,14 @@ void setup() {
 ```
 
 ---
+
+## Runnable examples
+
+Start with the [examples learning guide](examples/README.md) for separate
+PlatformIO projects covering numbers/layouts, colors, a Wi-Fi/NTP/OTA clock,
+Home Assistant MQTT discovery, and subscribing to temperature readings.
+Each lesson supports both boards and reuses the existing modules without
+replacing the application in `src/`.
 
 ## Building and Flashing
 

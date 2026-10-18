@@ -7,9 +7,15 @@
 
 namespace {
 unsigned int temperatureUpdates = 0;
+unsigned int co2Updates = 0;
+uint16_t lastCo2Update = 0;
 void onTemperature(float value) {
   (void)value;
   ++temperatureUpdates;
+}
+void onCo2(uint16_t value) {
+  ++co2Updates;
+  lastCo2Update = value;
 }
 }  // namespace
 
@@ -74,10 +80,62 @@ void test_co2_payload_parsing_float() {
 }
 
 void test_co2_payload_parsing_invalid() {
-  uint16_t ppm = 0;
-  const char payload[] = "invalid_number";
-  TEST_ASSERT_FALSE(MqttCo2Sensor::parsePayload(payload, strlen(payload), ppm));
+  const char* invalid[] = {
+      "invalid_number", "650 ppm", "650x", "NaN", "inf", "-1", "65536",
+      "65535.5", "1e999", "1e-999", "0x1p2", "", "   "};
+  uint16_t ppm = 42;
+  for (const char* payload : invalid) {
+    TEST_ASSERT_FALSE(MqttCo2Sensor::parsePayload(payload, strlen(payload), ppm));
+    TEST_ASSERT_EQUAL_UINT16(42, ppm);
+  }
   TEST_ASSERT_FALSE(MqttCo2Sensor::parsePayload(nullptr, 0, ppm));
+
+  const char embeddedNull[] = {'6', '5', '\0', '0'};
+  TEST_ASSERT_FALSE(MqttCo2Sensor::parsePayload(
+      embeddedNull, sizeof(embeddedNull), ppm));
+
+  char oversized[40];
+  memset(oversized, '0', sizeof(oversized));
+  oversized[0] = '6';
+  oversized[1] = '5';
+  oversized[2] = '0';
+  TEST_ASSERT_FALSE(
+      MqttCo2Sensor::parsePayload(oversized, sizeof(oversized), ppm));
+  TEST_ASSERT_EQUAL_UINT16(42, ppm);
+}
+
+void test_co2_payload_parsing_boundaries_and_whitespace() {
+  const char* valid[] = {"0", " 650 \r\n", "+650.0", "799.6", "65535",
+                         "65535.4"};
+  const uint16_t expected[] = {0, 650, 650, 800, 65535, 65535};
+  uint16_t ppm = 0;
+  for (size_t i = 0; i < sizeof(valid) / sizeof(valid[0]); ++i) {
+    TEST_ASSERT_TRUE(
+        MqttCo2Sensor::parsePayload(valid[i], strlen(valid[i]), ppm));
+    TEST_ASSERT_EQUAL_UINT16(expected[i], ppm);
+  }
+}
+
+void test_co2_sensor_retains_last_valid_reading() {
+  MqttCo2Sensor sensor("co2", onCo2);
+  co2Updates = 0;
+  lastCo2Update = 0;
+  const uint8_t valid[] = {'6', '5', '0'};
+  const uint8_t invalid[] = {'6', '5', '0', 'x'};
+
+  TEST_ASSERT_FALSE(sensor.hasValue());
+  TEST_ASSERT_FALSE(sensor.handleMessage("other", valid, sizeof(valid)));
+  TEST_ASSERT_TRUE(sensor.handleMessage("co2", valid, sizeof(valid)));
+  TEST_ASSERT_TRUE(sensor.hasValue());
+  TEST_ASSERT_EQUAL_UINT16(650, sensor.getPpm());
+  TEST_ASSERT_EQUAL_UINT16(650, lastCo2Update);
+  TEST_ASSERT_EQUAL_UINT(1, co2Updates);
+  const uint32_t updatedAt = sensor.lastUpdateMs();
+
+  TEST_ASSERT_TRUE(sensor.handleMessage("co2", invalid, sizeof(invalid)));
+  TEST_ASSERT_EQUAL_UINT16(650, sensor.getPpm());
+  TEST_ASSERT_EQUAL_UINT32(updatedAt, sensor.lastUpdateMs());
+  TEST_ASSERT_EQUAL_UINT(1, co2Updates);
 }
 
 void test_ambient_light_parsing() {
@@ -119,6 +177,8 @@ void setup() {
   RUN_TEST(test_co2_payload_parsing_integer);
   RUN_TEST(test_co2_payload_parsing_float);
   RUN_TEST(test_co2_payload_parsing_invalid);
+  RUN_TEST(test_co2_payload_parsing_boundaries_and_whitespace);
+  RUN_TEST(test_co2_sensor_retains_last_valid_reading);
   RUN_TEST(test_ambient_light_parsing);
   RUN_TEST(test_lux_to_brightness_scaling);
   RUN_TEST(test_temperature_payload_parsing);
