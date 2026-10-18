@@ -20,7 +20,10 @@
 #include "sensors/mqtt_temperature_sensor.h"
 
 // Hardware Configuration
-constexpr uint8_t DATA_PIN = 27;
+#ifndef LED_DATA_PIN
+#define LED_DATA_PIN 27
+#endif
+constexpr uint8_t DATA_PIN = LED_DATA_PIN;
 constexpr char LAYOUT[] = "DD:D.D.";
 constexpr uint8_t countDigitModules(const char* layout) {
   return *layout == '\0'
@@ -32,7 +35,7 @@ static_assert(DISPLAY_DIGIT_COUNT > 0, "Layout must contain a digit");
 
 constexpr uint8_t PIXELS_PER_SEGMENT = 4;
 constexpr uint8_t PIXELS_PER_DOT = 1;
-constexpr uint8_t DOT_BRIGHTNESS_PERCENT = 130;
+constexpr uint8_t DOT_BRIGHTNESS_PERCENT = 100;
 constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(
     LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
 static_assert(NUM_LEDS > 0, "Invalid display layout");

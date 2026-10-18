@@ -119,6 +119,36 @@ Credentials and topics are cleanly separated by semantic concern:
 
 ---
 
+## ESP32-C3 Super Mini
+
+For a typical 4 MB ESP32-C3 Super Mini, use the `c3_supermini` environment
+in [platformio.ini](platformio.ini). It enables native USB serial and selects
+**GPIO4** for the NeoPixel data connection. The existing Wemos environments
+continue to use **GPIO27**. Override `LED_DATA_PIN` in the environment's
+`build_flags` if you wire a different GPIO.
+
+Flash the C3 over USB first:
+
+```bash
+pio run -e c3_supermini -t upload
+```
+
+If the board does not enter download mode automatically, hold BOOT, press and
+release RESET, then release BOOT and retry the upload.
+
+For subsequent OTA updates, set `upload_port` under `c3_supermini_ota` to the
+C3's IP address, then run:
+
+```bash
+pio run -e c3_supermini_ota -t upload
+```
+
+Both OTA environments allow 60 seconds for the initial invitation response;
+this is not the firmware transfer timeout. Always use a C3 environment when
+building firmware for the C3, not a Wemos environment.
+
+---
+
 ## Usage Examples
 
 ### Example 1: Minimal Standalone Display (No Wi-Fi / No MQTT)

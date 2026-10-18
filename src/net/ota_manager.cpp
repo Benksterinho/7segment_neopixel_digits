@@ -13,6 +13,7 @@ void OtaManager::begin(const char* hostname) {
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("OTA error %u\n", error);
   });
+  ArduinoOTA.setTimeout(30000);  // 30 seconds, in milliseconds
   ArduinoOTA.begin();
   initialized_ = true;
   Serial.printf("OTA initialized with hostname: %s\n", hostname);
