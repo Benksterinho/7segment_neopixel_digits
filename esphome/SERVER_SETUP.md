@@ -110,10 +110,10 @@ esphome/packages/board-c3.yaml
 esphome/components/modular_7segment/
 ```
 
-New server-packaging changes cannot be fetched until someone commits and pushes
-them to GitHub. These examples deliberately use
-`REPLACE_WITH_PUBLISHED_COMMIT_SHA`, not a fictitious release or an older commit
-missing the packages. The placeholder is not a working revision.
+The templates are pinned to the published, tested commit
+[`615b613fa685de19a1f3de5de96a8356f9583bc3`](https://github.com/Benksterinho/7segment_neopixel_digits/commit/615b613fa685de19a1f3de5de96a8356f9583bc3).
+You can use that revision unchanged. Future package/component changes must be
+committed and pushed to GitHub before a server can fetch their new revision.
 
 Choose the full commit SHA from the tested published commit, or an immutable
 release tag. The template uses **one** `project_revision` substitution for both
@@ -160,7 +160,8 @@ configuration directory, backups and downloaded firmware.
    replace its entire contents with the template, and save.
    Alternatively, copy the template directly to the server's configuration
    directory as `lab-clock.yaml`, then refresh the dashboard.
-3. Replace `project_revision` with the published revision selected in step 2.
+3. Keep the tested `project_revision`, or select another published, tested
+   revision as described in step 2.
 4. Set a unique `node_name`, for example `lab-clock`, and the appropriate LED
    pin and timezone.
 5. If needed, extend the existing `substitutions:` block with your settings:
@@ -168,7 +169,7 @@ configuration directory, backups and downloaded firmware.
    ```yaml
    substitutions:
      node_name: lab-clock
-     project_revision: "REPLACE_WITH_PUBLISHED_COMMIT_SHA"
+     project_revision: "615b613fa685de19a1f3de5de96a8356f9583bc3"
      led_pin: GPIO27
      timezone: "Europe/Berlin"
      layout: "DD:D.D."
@@ -182,7 +183,7 @@ configuration directory, backups and downloaded firmware.
    ```
 
    This is a substitutions example, **not a replacement for the complete
-   template**. Set the real revision here too; for the C3 use GPIO4 unless your
+   template**. Keep the revision matched to your template; for the C3 use GPIO4 unless your
    hardware wiring specifies another appropriate pin.
 
 Do not append a template to wizard-generated YAML: duplicate `esp32`, `api`,
@@ -277,7 +278,7 @@ both board builds and compatibility testing.
 
 | Symptom | Check |
 | --- | --- |
-| Git ref not found or shared package missing | Replace the revision placeholder; confirm the commit and all required files are on GitHub, not just a local Git server. |
+| Git ref not found or shared package missing | Check `project_revision`; confirm the commit and all required files are on GitHub, not just a local Git server. |
 | Cannot clone/download | Check server DNS, internet/TLS access and GitHub access. A public repo needs no GitHub token; private access requires separate authentication configuration. |
 | Local component folder missing | Use the server template, not a checkout YAML; its source must be `type: git` with `path: esphome/components`. |
 | Secret not defined | Put `secrets.yaml` beside the device YAML in the server configuration directory; verify exact key names. Remote packages must not perform secret lookups. |
@@ -302,7 +303,8 @@ The pinned Docker entrypoint, dashboard credentials, menu labels and artifact
 choices were checked against upstream release sources (Device Builder 1.14.9,
 frontend 0.1.329). Docker execution and interactive dashboard clicks were not
 tested in the development environment because Docker/the dashboard were not
-installed. Final GitHub fetch verification requires publication of these changes.
+installed. The published revision above is also checked through real GitHub
+package/component fetching and code generation for both board targets.
 Hardware, real-network operation, flashing and OTA recovery remain unverified.
 
 References: [external components](https://esphome.io/components/external_components/),

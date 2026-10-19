@@ -136,6 +136,12 @@ packages and components from a temporary Git repository pinned to one commit.
 They exercise actual cloning/merging, not local component mounts. The `--server`
 build checks both nonempty factory and OTA artifacts. GitHub-backed builds
 additionally require publication of the revision; these tests do not push code.
+To verify the templates' published pins against GitHub instead of the temporary
+Git fixture, run:
+
+```sh
+ESPHOME_SERVER_SOURCE=github esphome/.venv/bin/python -m unittest discover -s esphome/tests -p test_server_config.py -v
+```
 
 ## Home Assistant and MQTT
 

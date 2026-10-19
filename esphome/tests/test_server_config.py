@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -11,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / ".venv/bin/esphome"
 SOURCE_URL = "https://github.com/Benksterinho/7segment_neopixel_digits.git"
-REVISION_PLACEHOLDER = "REPLACE_WITH_PUBLISHED_COMMIT_SHA"
+REVISION_PATTERN = r'(?m)^(\s*project_revision: )"[^"]+"'
 
 
 class ServerConfigTests(unittest.TestCase):
@@ -40,8 +41,12 @@ class ServerConfigTests(unittest.TestCase):
         config_dir.mkdir()
         source = (ROOT / "server" / f"neopixel-clock-{board}.yaml.example").read_text()
         self.assertEqual(source.count("ref: ${project_revision}"), 2)
-        source = source.replace(SOURCE_URL, self.repository.as_uri())
-        source = source.replace(REVISION_PLACEHOLDER, self.revision)
+        if os.environ.get("ESPHOME_SERVER_SOURCE") != "github":
+            source = source.replace(SOURCE_URL, self.repository.as_uri())
+            source, replacements = re.subn(
+                REVISION_PATTERN, rf'\g<1>"{self.revision}"', source, count=1
+            )
+            self.assertEqual(replacements, 1)
         source = source.replace("substitutions:\n", "substitutions:\n" + overrides, 1)
         if os.environ.get("ESPHOME_SERVER_FULL_COMPILE") == "1":
             build = ROOT / ".esphome/build" / f"server-clock-{board}"
@@ -127,7 +132,12 @@ class ServerConfigTests(unittest.TestCase):
         source = substitutions + "\npackages:" + source.split(
             "\npackages:", 1
         )[1]
-        target.write_text(source.replace(REVISION_PLACEHOLDER, self.revision))
+        if os.environ.get("ESPHOME_SERVER_SOURCE") != "github":
+            source, replacements = re.subn(
+                REVISION_PATTERN, rf'\g<1>"{self.revision}"', source, count=1
+            )
+            self.assertEqual(replacements, 1)
+        target.write_text(source)
         result = self.run_esphome(target, "config")
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("lab-clock", result.stdout)

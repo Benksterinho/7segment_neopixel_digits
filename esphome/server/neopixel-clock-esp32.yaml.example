@@ -1,7 +1,7 @@
 substitutions:
   node_name: neopixel-clock-esp32
-  # Replace with a published commit containing the server packages.
-  project_revision: "REPLACE_WITH_PUBLISHED_COMMIT_SHA"
+  # Tested published revision; update deliberately for both packages and component.
+  project_revision: "615b613fa685de19a1f3de5de96a8356f9583bc3"
   led_pin: GPIO27
   timezone: "Europe/Berlin"
 
