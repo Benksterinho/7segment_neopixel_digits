@@ -1,5 +1,7 @@
 # My Lab Display
 
+![NeoPixel display in the Lab](docs/images/7segment_clock.jpeg)
+
 This repository contains the firmware for the modular NeoPixel 7-segment
 display currently running in my **Lab**. It is a real, working project that
 brings together a physical LED display, Home Assistant, and sensor data from
