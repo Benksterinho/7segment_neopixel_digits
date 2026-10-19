@@ -6,6 +6,12 @@ brings together a physical LED display, Home Assistant, and sensor data from
 the Lab network. The examples and library are separated out so you can also
 use the display in your own build.
 
+An independent [ESPHome alternative](esphome/README.md) is also available for
+the Wemos D1 Mini32 and ESP32-C3 Super Mini. It uses native Home Assistant
+controls and the existing MQTT sensor topics, without changing the standalone
+PlatformIO firmware. See its guide for setup, behavioral differences and
+hardware verification status.
+
 ## The display in my Lab
 
 The current firmware is configured for a WS2812B / NeoPixel chain with this

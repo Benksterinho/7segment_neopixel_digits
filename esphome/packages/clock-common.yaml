@@ -1,0 +1,121 @@
+substitutions:
+  layout: "DD:D.D."
+  num_leds: "116"
+  pixels_per_segment: "4"
+  pixels_per_dot: "1"
+  dot_brightness_percent: "100"
+  temperature_offset: "-2.0"
+  timezone: "Europe/Berlin"
+  ntp_server: "pool.ntp.org"
+  co2_topic: "env-sensor-station/sensor/scd41_co2/state"
+  temperature_topic: "env-sensor-station/sensor/bme688_temperature/state"
+  ambient_light_topic: "env-sensor-station/sensor/ambient_light/state"
+
+esphome:
+  name: ${node_name}
+  friendly_name: NeoPixel Clock
+  min_version: 2026.9.1
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [modular_7segment]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+    encryption:
+      key: !secret api_encryption_key
+
+preferences:
+  flash_write_interval: 2s
+
+mqtt:
+  broker: !secret mqtt_host
+  port: !secret mqtt_port
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+  discovery: false
+  discover_ip: false
+  log_topic: null
+  birth_message: null
+  will_message: null
+  shutdown_message: null
+  reboot_timeout: 0s
+  wait_for_connection: false
+  on_message:
+    - topic: ${co2_topic}
+      then:
+        - lambda: id(segment_display).receive_co2(x);
+    - topic: ${temperature_topic}
+      then:
+        - lambda: id(segment_display).receive_temperature(x);
+    - topic: ${ambient_light_topic}
+      then:
+        - lambda: id(segment_display).receive_lux(x);
+
+time:
+  - platform: sntp
+    id: clock_time
+    timezone: ${timezone}
+    servers: ["${ntp_server}"]
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: physical_strip
+    internal: true
+    pin: ${led_pin}
+    num_leds: ${num_leds}
+    chipset: WS2812
+    channel_colors: GRB
+    use_psram: false
+    gamma_correct: 1.0
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+  - platform: modular_7segment
+    id: display_light
+    output_id: segment_display
+    name: Display
+    strip_id: physical_strip
+    time_id: clock_time
+    auto_brightness_id: auto_brightness
+    auto_mode_id: auto_mode
+    mode_select_id: display_mode
+    layout: ${layout}
+    pixels_per_segment: ${pixels_per_segment}
+    pixels_per_dot: ${pixels_per_dot}
+    dot_brightness_percent: ${dot_brightness_percent}
+    temperature_offset: ${temperature_offset}
+    gamma_correct: 1.0
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+
+switch:
+  - platform: modular_7segment
+    id: auto_brightness
+    name: Auto-Brightness
+    display_id: segment_display
+    kind: auto_brightness
+    restore_mode: DISABLED
+  - platform: modular_7segment
+    id: auto_mode
+    name: Auto Mode
+    display_id: segment_display
+    kind: auto_mode
+    restore_mode: DISABLED
+
+select:
+  - platform: modular_7segment
+    id: display_mode
+    name: Display Mode
+    display_id: segment_display

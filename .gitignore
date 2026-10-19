@@ -15,6 +15,11 @@ examples/*/.pio/
 __pycache__/
 *.py[cod]
 
+# Isolated ESPHome alternative
+esphome/.venv/
+esphome/.esphome/
+esphome/secrets.yaml
+
 # macOS
 .DS_Store
 ._*

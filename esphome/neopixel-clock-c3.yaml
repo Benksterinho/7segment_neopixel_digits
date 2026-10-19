@@ -1,0 +1,15 @@
+substitutions:
+  node_name: neopixel-clock-c3
+  led_pin: GPIO4
+
+packages:
+  clock: !include packages/clock-common.yaml
+
+esp32:
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  baud_rate: 115200

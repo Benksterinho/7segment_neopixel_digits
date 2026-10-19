@@ -1,0 +1,14 @@
+substitutions:
+  node_name: neopixel-clock-esp32
+  led_pin: GPIO27
+
+packages:
+  clock: !include packages/clock-common.yaml
+
+esp32:
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:
+  baud_rate: 115200
