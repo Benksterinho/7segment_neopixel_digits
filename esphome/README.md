@@ -21,6 +21,15 @@ This implementation targets **ESPHome 2026.9.1**, pinned in
 [requirements-dev.txt](requirements-dev.txt). ESPHome's component interfaces
 can change; test both builds before updating that pin.
 
+## Build on an ESPHome server
+
+For the dashboard at `http://<server>:6052`, follow the
+[step-by-step server setup and build guide](SERVER_SETUP.md). It covers existing
+servers, optional pinned Docker setup, GitHub-backed packages/components, local
+secrets, and validating/compiling/downloading without a connected board.
+The component already uses ESPHome's external-component format; no separate
+package installation is required.
+
 ## Install and configure
 
 Run these commands from the repository root on Linux/macOS. Use a Python version
@@ -38,10 +47,11 @@ example API key with the freshly generated private key. The key also protects
 encrypted ESPHome OTA. **The committed example key is public test data, not a
 usable device credential.**
 
-Keep this directory structure when building: the package and external component
-paths are checkout-relative. Copying just a device YAML into the Home Assistant
-ESPHome dashboard is not sufficient. Copy the package and component directories
-as well, or build from the checkout.
+For this checkout-based workflow, keep the directory structure: package and
+external-component paths are checkout-relative. Copying just these device YAMLs
+into a dashboard is not sufficient. Use the
+[server templates](server/) and [server guide](SERVER_SETUP.md) for Git-based
+deployment, or retain the packages/components alongside the local device YAMLs.
 
 The original repository `.venv` remains dedicated to PlatformIO. ESPHome uses
 `esphome/.venv` and does not install into or activate the PlatformIO environment.
@@ -74,7 +84,11 @@ unused. If changing densities or layout, also change `num_leds`; schema
 validation rejects a mismatched strip length. This build does not auto-detect
 the physical chain or support arbitrary-length clock/temperature formatting.
 
-The common configuration is in [clock-common.yaml](packages/clock-common.yaml).
+The reusable common configuration is in
+[clock-common.yaml](packages/clock-common.yaml); board packages supply chip/logger
+settings, and [clock-local.yaml](packages/clock-local.yaml) supplies checkout-local
+component loading and secrets. Server templates supply those local settings
+themselves, fetching only secret-free common/board packages from Git.
 The physical strip is internal, starts OFF, has gamma 1 and zero default
 transitions, and must not have competing effects. The component owns rendering
 and applies effective brightness once. Transition/flash effects are not a
@@ -98,11 +112,12 @@ For repeatable tests and both firmware builds **without real secrets**, use:
 ```sh
 sh esphome/tests/run-host-tests.sh
 sh esphome/tests/run-runtime-tests.sh
-esphome/.venv/bin/python -m unittest discover -s esphome/tests -p test_config.py -v
+esphome/.venv/bin/python -m unittest discover -s esphome/tests -p 'test*config.py' -v
 sh esphome/tests/compile-firmware.sh
+sh esphome/tests/compile-firmware.sh --server
 ```
 
-The last two commands stage disposable configurations with the public example
+The last three commands stage disposable configurations with the public example
 credentials; they never read your private secrets. The compile script retains
 generated binaries under the ignored `esphome/.esphome/build/` cache. **Do not
 flash these dummy-credential builds.** Recompile your normal configuration with
@@ -116,6 +131,11 @@ OFF behavior, restore sequencing, persistence failures and command handling.
 These simulations do not test the real network, flash, RMT driver or hardware.
 Schema tests generate C++ for both variants and reject invalid configurations.
 Full builds additionally verify the real ESPHome/ESP-IDF interfaces.
+Server tests start with only a thin device YAML and dummy secrets, and fetch
+packages and components from a temporary Git repository pinned to one commit.
+They exercise actual cloning/merging, not local component mounts. The `--server`
+build checks both nonempty factory and OTA artifacts. GitHub-backed builds
+additionally require publication of the revision; these tests do not push code.
 
 ## Home Assistant and MQTT
 

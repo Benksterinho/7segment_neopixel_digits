@@ -19,6 +19,8 @@ __pycache__/
 esphome/.venv/
 esphome/.esphome/
 esphome/secrets.yaml
+esphome/server/config/
+esphome/server/dashboard.env
 
 # macOS
 .DS_Store

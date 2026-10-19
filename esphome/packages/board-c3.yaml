@@ -1,0 +1,11 @@
+substitutions:
+  led_pin: GPIO4
+
+esp32:
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  baud_rate: 115200

@@ -3,12 +3,5 @@ substitutions:
   led_pin: GPIO27
 
 packages:
-  clock: !include packages/clock-common.yaml
-
-esp32:
-  variant: esp32
-  framework:
-    type: esp-idf
-
-logger:
-  baud_rate: 115200
+  clock: !include packages/clock-local.yaml
+  board: !include packages/board-esp32.yaml

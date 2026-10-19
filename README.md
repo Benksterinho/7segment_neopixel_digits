@@ -14,6 +14,11 @@ controls and the existing MQTT sensor topics, without changing the standalone
 PlatformIO firmware. See its guide for setup, behavioral differences and
 hardware verification status.
 
+To build it from an **ESPHome server dashboard on port 6052**, use the
+[step-by-step server setup guide](esphome/SERVER_SETUP.md). It covers GitHub-based
+configuration, local secrets, optional Docker setup, and firmware downloads
+without a connected board.
+
 ## The display in my Lab
 
 The current firmware is configured for a WS2812B / NeoPixel chain with this

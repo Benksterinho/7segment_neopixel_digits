@@ -16,35 +16,16 @@ esphome:
   friendly_name: NeoPixel Clock
   min_version: 2026.9.1
 
-external_components:
-  - source:
-      type: local
-      path: components
-    components: [modular_7segment]
-
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
   reboot_timeout: 0s
 
 api:
-  encryption:
-    key: !secret api_encryption_key
   reboot_timeout: 0s
-
-ota:
-  - platform: esphome
-    encryption:
-      key: !secret api_encryption_key
 
 preferences:
   flash_write_interval: 2s
 
 mqtt:
-  broker: !secret mqtt_host
-  port: !secret mqtt_port
-  username: !secret mqtt_user
-  password: !secret mqtt_password
   discovery: false
   discover_ip: false
   log_topic: null

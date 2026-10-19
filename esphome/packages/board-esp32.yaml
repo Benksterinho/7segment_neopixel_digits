@@ -1,0 +1,10 @@
+substitutions:
+  led_pin: GPIO27
+
+esp32:
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:
+  baud_rate: 115200

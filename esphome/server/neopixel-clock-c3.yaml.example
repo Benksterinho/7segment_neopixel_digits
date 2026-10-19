@@ -1,0 +1,43 @@
+substitutions:
+  node_name: neopixel-clock-c3
+  # Replace with a published commit containing the server packages.
+  project_revision: "REPLACE_WITH_PUBLISHED_COMMIT_SHA"
+  led_pin: GPIO4
+  timezone: "Europe/Berlin"
+
+packages:
+  clock:
+    url: https://github.com/Benksterinho/7segment_neopixel_digits.git
+    ref: ${project_revision}
+    refresh: never
+    files:
+      - esphome/packages/clock-common.yaml
+      - esphome/packages/board-c3.yaml
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/Benksterinho/7segment_neopixel_digits.git
+      ref: ${project_revision}
+      path: esphome/components
+    components: [modular_7segment]
+    refresh: never
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    encryption:
+      key: !secret api_encryption_key
+
+mqtt:
+  broker: !secret mqtt_host
+  port: !secret mqtt_port
+  username: !secret mqtt_user
+  password: !secret mqtt_password
