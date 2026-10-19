@@ -132,3 +132,13 @@ The standalone hardware tests are intentionally simpler than the Lab
 application. They bypass layout rendering and use a fixed LED buffer; adjust
 their pin and LED count to match your hardware before running them. See the
 [hardware checklist](docs/hw_checklist.md) for details.
+
+## License
+
+The project's original code and documentation are available under the
+[MIT License](LICENSE).
+
+Third-party dependencies retain their own licenses. See
+[third-party dependencies and licensing](THIRD_PARTY_NOTICES.md) for the
+reviewed library licenses and additional considerations when distributing
+compiled firmware.
