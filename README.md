@@ -1,268 +1,134 @@
-# NeoPixel 7-Segment Display Clock & Environmental Monitor
+# My Lab Display
 
-An ESP32-based modular firmware for driving daisy-chained WS2812B / NeoPixel 7-segment displays.
+This repository contains the firmware for the modular NeoPixel 7-segment
+display currently running in my **Lab**. It is a real, working project that
+brings together a physical LED display, Home Assistant, and sensor data from
+the Lab network. The examples and library are separated out so you can also
+use the display in your own build.
 
-The system cycles through synchronized **current local time**, **SCD41 CO2 readings**, and **BME688 temperature**, with dynamic **auto-brightness** based on room ambient lux, full **Home Assistant MQTT integration**, and **ArduinoOTA** support.
+## The display in my Lab
 
----
+The current firmware is configured for a WS2812B / NeoPixel chain with this
+module layout, in data order:
 
-## Features
-
-- **Decoupled & Modular Architecture**:
-  - **Hardware / Display**: `Modular7Segment` runs completely standalone without any network or MQTT requirements.
-  - **Network (`src/net/`)**: Self-contained `WifiManager`, `OtaManager`, and `TimeSync` (SNTP).
-  - **MQTT Core (`src/mqtt/`)**: `MqttManager` handles connection lifecycle, reconnect backoff, and routes messages to registered `IMqttModule` implementations.
-  - **Display Logic (`src/display/`)**: `DisplayModeController` decides the active mode (auto cycling vs. manual) without any MQTT or LED dependencies.
-  - **Sensors (`src/sensors/`)**: Plug-in MQTT sensors for CO2, temperature, and ambient light.
-- **Three Display Modes (30-second cycle)**:
-  - **Time Mode (30s)**: Formats current local time (24h `HH.MM`) using the configured Home Assistant light color, blinking the decimal point every second. Shows `----` if time is not yet synced via NTP.
-  - **CO2 Mode (30s)**: Displays SCD41 CO2 concentration (right-aligned ppm, e.g. ` 750`). Color-coded by air quality thresholds:
-    - **Green**: `< 800 ppm` (Good)
-    - **Yellow**: `800 .. 1199 ppm` (Fair)
-    - **Red**: `≥ 1200 ppm` (Poor / Ventilate)
-  - **Temperature Mode (30s)**: Subscribes to `env-sensor-station/sensor/bme688_temperature/state` (Celsius) and uses the configured Home Assistant light color. The leftmost digit stays blank; the rightmost three show one decimal place (` 25.7`, `  5.2`, ` -5.2`). Values outside -9.9 to 99.9 degrees Celsius show ` ---` without clipping. Readings are rounded to the nearest tenth; rounded negative zero displays as zero.
-  - The physical layout is `DD.D.D.` (115 LEDs with 4 pixels per segment and 1 per dot). Temperature lights only the decimal before the last digit. Time blinks only the hours/minutes separator; CO2 uses no dots. The trailing dot stays off.
-  - Auto mode skips each sensor independently until a valid reading arrives. Manually selecting a sensor without a reading shows Time until its first valid reading.
-- **Display Mode Selection (Home Assistant)**:
-  - `Auto Mode` switch: while **ON**, the display cycles Time → CO2 → Temperature → Time every 30 s, skipping unavailable sensors.
-  - `Display Mode` select (`Time` / `CO2` / `Temperature`): picking a mode shows it immediately and turns `Auto Mode` **OFF**, pinning that mode.
-  - Turning `Auto Mode` back ON resumes cycling. The select only reflects the last manual choice.
-  - Both are persisted in NVS and restored on boot.
-- **Ambient Light & Auto-Brightness**:
-  - Subscribes to ambient lux readings from MQTT (`env-sensor-station/sensor/ambient_light/state`).
-  - Home Assistant MQTT switch entity (`Auto-Brightness`) to toggle between automatic and manual brightness control.
-  - When Auto-Brightness is **ON**:
-    - The display dynamically scales its brightness via a logarithmic perception curve clamped between `15` (~6%) and `255`.
-    - The actual lux-calculated brightness is published back to Home Assistant, keeping the brightness slider synchronized in real time.
-  - When you **manually adjust the brightness slider** in Home Assistant:
-    - Auto-Brightness automatically turns **OFF** and your manual setting takes effect immediately.
-    - Toggling the Auto-Brightness switch back ON restores automatic ambient control.
-  - Auto-brightness toggle and manual brightness are persisted in ESP32 flash (NVS).
-- **Home Assistant MQTT Light Entity**:
-  - Native JSON schema MQTT light with automatic discovery.
-  - Power control (`ON`/`OFF`), brightness slider (`1..255`), and RGB color picker.
-  - Turning the light `OFF` blanks the display completely across all modes; turning it back `ON` resumes the active display.
-  - State and brightness debounced and persisted to NVS flash (`LightStore`).
-- **ArduinoOTA**:
-  - Over-the-air firmware updates over Wi-Fi.
-
----
-
-## Directory Structure
-
-```
-.
-├── examples/                      # Twelve runnable lessons, each with a README
-├── include/
-│   ├── net_config.example.h       # Template for Wi-Fi & NTP configuration
-│   ├── mqtt_config.example.h      # Template for MQTT broker & sensor topics
-│   ├── net_config.h               # Git-ignored private Wi-Fi & NTP credentials
-│   └── mqtt_config.h              # Git-ignored private MQTT credentials & topics
-├── lib/
-│   ├── LightState/                # Home Assistant light state parser & NVS store
-│   └── Modular7Segment/           # Standalone NeoPixel 7-segment layout & rendering
-├── src/
-│   ├── net/
-│   │   ├── wifi_manager.h/.cpp    # Non-blocking Wi-Fi management & reconnects
-│   │   ├── ota_manager.h/.cpp     # ArduinoOTA integration
-│   │   └── time_sync.h/.cpp       # SNTP (configTzTime) and time formatting
-│   ├── mqtt/
-│   │   ├── mqtt_module.h          # IMqttModule lifecycle interface
-│   │   ├── mqtt_manager.h/.cpp    # Central PubSubClient & message dispatcher
-│   │   ├── mqtt_light_module.h/.cpp  # HA MQTT Light entity
-│   │   ├── mqtt_switch_module.h/.cpp # HA MQTT Switch entity (Auto-Brightness, Auto Mode)
-│   │   └── mqtt_select_module.h/.cpp # HA MQTT Select entity (Display Mode)
-│   ├── display/
-│   │   ├── display_mode_controller.h/.cpp # Auto cycling / manual display mode logic
-│   │   └── temperature_format.h/.cpp # Right-three-digit temperature formatting
-│   ├── sensors/
-│   │   ├── mqtt_co2_sensor.h/.cpp # SCD41 CO2 subscriber & color mapper
-│   │   ├── mqtt_temperature_sensor.h/.cpp # BME688 Celsius subscriber
-│   │   └── mqtt_ambient_light_sensor.h/.cpp # Lux subscriber & log brightness
-│   └── main.cpp                   # Firmware orchestration & display loop
-├── test/                          # Unit tests (parsing, thresholds, layouts)
-└── platformio.ini
+```text
+DD:D.D.
 ```
 
----
+That is four digit modules, one colon, and two decimal points. With four
+pixels per digit segment and one pixel per dot, this configuration requires
+**116 LEDs**. The layout and pixel counts describe the physical hardware; they
+must match the modules and wiring in the chain. They are not inferred from the
+text being displayed.
 
-## Configuration
+The main firmware runs on an ESP32 and combines:
 
-Credentials and topics are cleanly separated by semantic concern:
+- **Time:** local time synchronized over Wi-Fi using NTP.
+- **Environmental readings:** CO2, temperature, and ambient-light values
+  received over MQTT from the Lab sensor setup (including SCD41 and BME688
+  data).
+- **Automatic display modes:** rotates between time, CO2, and temperature,
+  skipping sensor modes until a valid reading is available.
+- **Home Assistant controls:** MQTT discovery exposes the display as a light
+  with on/off, brightness, and RGB controls, plus switches/selects for
+  automatic brightness and display mode.
+- **Brightness automation:** ambient-light readings can set brightness
+  automatically; a manual brightness adjustment returns control to the user.
+- **OTA updates:** firmware can be uploaded over Wi-Fi after initial USB
+  setup.
 
-1. Copy the example templates:
-   ```bash
-   cp include/net_config.example.h include/net_config.h
-   cp include/mqtt_config.example.h include/mqtt_config.h
-   ```
+The root application is configured for the Wemos D1 Mini32 on GPIO 27 by
+default. A separate ESP32-C3 Super Mini PlatformIO environment uses GPIO 4.
+These are project defaults, not universal pin assignments.
 
-2. Configure `include/net_config.h`:
-   ```cpp
-   constexpr char WIFI_SSID[] = "your-wifi-ssid";
-   constexpr char WIFI_PASSWORD[] = "your-wifi-password";
+## Use it in your own build
 
-   constexpr char NTP_SERVER[] = "pool.ntp.org";
-   // POSIX timezone string (e.g. Central Europe CET/CEST with daylight saving time):
-   constexpr char NTP_TIMEZONE[] = "CET-1CEST,M3.5.0,M10.5.0/3";
-   ```
+Start with the [runnable examples guide](examples/README.md). It introduces
+the display in small, independent steps, from layout and colors to networking
+and Home Assistant. Keep the repository checkout when building an example:
+the lessons reuse the library and shared project files under `lib/` and `src/`.
 
-3. Configure `include/mqtt_config.h`:
-   ```cpp
-   constexpr char MQTT_HOST[] = "192.168.1.100";
-   constexpr uint16_t MQTT_PORT = 1883;
-   constexpr char MQTT_USER[] = "sensor_user";
-   constexpr char MQTT_PASSWORD[] = "secret";
+For a display connected to different hardware, choose a layout that describes
+your modules in DIN-to-DOUT order, set the pixel counts and data pin for your
+setup, and size the NeoPixel buffer for that layout. For example, `D` is one
+digit, while `DD:DD` is four digits with a colon; their required LED counts
+are different. Confirm that the configured layout, total LED count, and
+physical chain all agree before troubleshooting display output.
 
-   constexpr char MQTT_CO2_TOPIC[] = "env-sensor-station/sensor/scd41_co2/state";
-   constexpr char MQTT_TEMPERATURE_TOPIC[] = "env-sensor-station/sensor/bme688_temperature/state";
-   constexpr char MQTT_AMBIENT_LIGHT_TOPIC[] = "env-sensor-station/sensor/ambient_light/state";
-   ```
+Useful starting points:
 
----
+- [Numbers and layouts](examples/01_numbers_and_layouts/): choose a physical
+  layout, calculate its LED count, and render text.
+- [Colors and brightness](examples/02_colors/): set colors, per-module output,
+  and brightness.
+- [Clock, NTP, and OTA](examples/03_clock_ntp_ota/): add Wi-Fi time and
+  wireless uploads.
+- [MQTT discovery and light control](examples/04_mqtt_discovery/): connect a
+  display to Home Assistant.
+- [The complete examples guide](examples/README.md): prerequisites, board
+  setup, all twelve lessons, and build commands.
+- [Modular7Segment library reference](lib/Modular7Segment/README.md): layout
+  syntax, inline pixel counts, supported characters, and API.
+- [Hardware checklist](docs/hw_checklist.md): verify the physical layout,
+  chain order, data path, and power.
+- [MQTT / Home Assistant guide](docs/MQTT.md): configuration, topics, and
+  integration behavior.
 
-## ESP32-C3 Super Mini
+## Build and configure the Lab firmware
 
-For a typical 4 MB ESP32-C3 Super Mini, use the `c3_supermini` environment
-in [platformio.ini](platformio.ini). It enables native USB serial and selects
-**GPIO4** for the NeoPixel data connection. The existing Wemos environments
-continue to use **GPIO27**. Override `LED_DATA_PIN` in the environment's
-`build_flags` if you wire a different GPIO.
+Install PlatformIO Core or the PlatformIO VS Code extension. Before building
+the root application, create local configuration files from the example
+templates:
 
-Flash the C3 over USB first:
-
-```bash
-pio run -e c3_supermini -t upload
+```sh
+cp include/net_config.example.h include/net_config.h
+cp include/mqtt_config.example.h include/mqtt_config.h
 ```
 
-If the board does not enter download mode automatically, hold BOOT, press and
-release RESET, then release BOOT and retry the upload.
+Edit `include/net_config.h` with your Wi-Fi and time-zone settings, and
+`include/mqtt_config.h` with your broker credentials and sensor topics. These
+local configuration files are ignored by Git; do not commit real credentials.
 
-For subsequent OTA updates, set `upload_port` under `c3_supermini_ota` to the
-C3's IP address, then run:
+Build or upload to the default Wemos D1 Mini32 environment:
 
-```bash
-pio run -e c3_supermini_ota -t upload
-```
-
-Both OTA environments allow 60 seconds for the initial invitation response;
-this is not the firmware transfer timeout. Always use a C3 environment when
-building firmware for the C3, not a Wemos environment.
-
----
-
-## Usage Examples
-
-### Example 1: Minimal Standalone Display (No Wi-Fi / No MQTT)
-
-To use the 7-segment display library in an isolated Arduino sketch without any networking:
-
-```cpp
-#include <Arduino.h>
-#include <Adafruit_NeoPixel.h>
-#include <Modular7Segment.h>
-
-constexpr uint8_t DATA_PIN = 27;
-constexpr char LAYOUT[] = "DDDD"; // 4 digits
-constexpr uint8_t PIXELS_PER_SEGMENT = 4;
-constexpr uint8_t PIXELS_PER_DOT = 1;
-constexpr uint16_t NUM_LEDS = Modular7Segment::requiredLeds(LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
-
-Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
-Modular7Segment display(leds, LAYOUT, PIXELS_PER_SEGMENT, PIXELS_PER_DOT);
-
-void setup() {
-  leds.begin();
-  leds.setBrightness(50);
-  leds.clear();
-  leds.show();
-
-  if (display.isValid()) {
-    // Print text in red:
-    display.printString("1234", leds.Color(255, 0, 0));
-    leds.show();
-  }
-}
-
-void loop() {
-  // Update display as needed
-}
-```
-
-### Example 2: Adding a Custom MQTT Sensor Module
-
-Adding a custom sensor to the shared `MqttManager` requires implementing `IMqttModule`. The built-in `MqttTemperatureSensor` demonstrates bounded parsing, last-valid-reading storage, and update callbacks. The simplified example below illustrates the interface:
-
-```cpp
-#include "mqtt/mqtt_module.h"
-
-class MqttTempSensor : public IMqttModule {
- public:
-  explicit MqttTempSensor(const char* topic) : topic_(topic) {}
-
-  void onMqttConnected(PubSubClient& client, const char* deviceId) override {
-    client.subscribe(topic_);
-  }
-
-  bool handleMessage(const char* topic, const uint8_t* payload, unsigned int length) override {
-    if (strcmp(topic, topic_) != 0) {
-      return false;
-    }
-    // Parse temperature and store value
-    char buf[16] = {};
-    size_t copyLen = length < sizeof(buf) - 1 ? length : sizeof(buf) - 1;
-    memcpy(buf, payload, copyLen);
-    temperature_ = atof(buf);
-    return true;
-  }
-
-  float getTemperature() const { return temperature_; }
-
- private:
-  const char* topic_;
-  float temperature_ = 0.0f;
-};
-```
-
-Register it in `setup()`:
-```cpp
-MqttTempSensor tempSensor("env-sensor-station/sensor/temperature/state");
-
-void setup() {
-  // ...
-  mqttManager.registerModule(&tempSensor);
-  mqttManager.begin(MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-}
-```
-
----
-
-## Runnable examples
-
-Start with the [examples learning guide](examples/README.md) for separate
-PlatformIO projects covering numbers/layouts, colors, a Wi-Fi/NTP/OTA clock,
-Home Assistant MQTT discovery, and subscribing to temperature readings.
-Each lesson supports both boards and reuses the existing modules without
-replacing the application in `src/`.
-
-## Building and Flashing
-
-Build the project using PlatformIO:
-
-```bash
-# Compile for serial upload (Wemos D1 Mini ESP32)
+```sh
 pio run -e wemos_d1_mini32
-
-# Upload via USB
 pio run -e wemos_d1_mini32 -t upload
-
-# Upload via OTA over Wi-Fi
-pio run -e ota -t upload
+pio device monitor -b 115200
 ```
 
-## Running Tests
+For the ESP32-C3 Super Mini, use `-e c3_supermini` instead.
 
-PlatformIO unit tests run natively or on-target:
+OTA requires an
+initial USB flash:
 
-```bash
-pio test -e wemos_d1_mini32
+1. Connect the board over USB and upload with `wemos_d1_mini32` or
+   `c3_supermini`, as appropriate. Configure Wi-Fi so the board joins your
+   network.
+2. Find the board's IP address on your network (for example, from the serial
+   monitor or your router's DHCP client list).
+3. Set that IP as `upload_port` in the matching OTA environment (`ota` for
+   Wemos, `c3_supermini_ota` for C3) in [platformio.ini](platformio.ini).
+4. Upload subsequent firmware updates over Wi-Fi:
+
+   ```sh
+   pio run -e ota -t upload
+   # or, for ESP32-C3:
+   pio run -e c3_supermini_ota -t upload
+   ```
+
+## Project structure
+
+```text
+examples/                 Runnable lessons for building your own display
+include/                  Example and local network/MQTT configuration
+lib/                      Modular7Segment and Home Assistant light-state code
+src/                      Lab application, display modes, MQTT, network, sensors
+test/                     Unit tests and standalone LED hardware checks
+docs/                     Hardware checklist and MQTT reference
 ```
+
+The standalone hardware tests are intentionally simpler than the Lab
+application. They bypass layout rendering and use a fixed LED buffer; adjust
+their pin and LED count to match your hardware before running them. See the
+[hardware checklist](docs/hw_checklist.md) for details.
